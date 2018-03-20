@@ -1,0 +1,87 @@
+---
+
+- name: install apache packages
+  apt:
+    pkg=apache2
+    state=installed
+  tags:
+    - apache
+
+- name: push external apache configuration template
+  template:
+    src={{ apache_external_conf_template }}
+    dest=/etc/apache2/apache2.conf
+    mode=0640
+    owner=root
+    group=root
+    backup=yes
+  notify:
+  - restart apache
+  when: apache_external_conf_template is defined
+  tags:
+    - apache
+
+- name: push external apache configuration file
+  copy:
+    src={{ apache_external_conf_file }}
+    dest=/etc/apache2/apache2.conf
+    mode=0640
+    owner=root
+    group=root
+    backup=yes
+  notify:
+  - restart apache
+  when: apache_external_conf_file is defined
+  tags:
+    - apache
+
+- name: push external apache security template
+  template:
+    src={{ apache_external_security_template }}
+    dest=/etc/apache2/conf.d/security.conf
+    mode=0640
+    owner=root
+    group=root
+    backup=yes
+  notify:
+  - restart apache
+  when: apache_external_security_template is defined
+  tags:
+    - apache
+
+- name: push external apache security file
+  copy:
+    src={{ apache_external_security_file }}
+    dest=/etc/apache2/conf.d/security.conf
+    mode=0640
+    owner=root
+    group=root
+    backup=yes
+  notify:
+  - restart apache
+  when: apache_external_security_file is defined
+  tags:
+    - apache
+
+- name: push external apache envvars
+  template:
+    src=envvars.j2
+    dest=/etc/apache2/envvars
+    mode=0644
+    owner=root
+    group=root
+    backup=yes
+  notify:
+  - restart apache
+  when: apache.RUN_USER is defined
+  tags:
+    - apache
+
+- name: ensure apache is running
+  service: 
+    name=apache2 
+    state=started
+  tags:
+    - apache
+
+

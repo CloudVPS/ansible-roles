@@ -1,0 +1,21 @@
+---
+
+- name: enable apache modules
+  shell: /usr/sbin/a2enmod {{ item }}
+    creates=/etc/apache2/mods-enabled/{{ item }}.load
+  with_items: '{{ enable_apache_modules }}'
+  notify:
+    - restart apache
+  when: enable_apache_modules is defined
+  tags:
+    - apache-modules
+
+- name: disable apache modules
+  shell: /usr/sbin/a2dismod {{ item }}
+    removes=/etc/apache2/mods-enabled/{{ item }}.load
+  with_items: '{{ disable_apache_modules }}'
+  notify:
+    - restart apache
+  when: disable_apache_modules is defined
+  tags:
+    - apache-modules

@@ -1,0 +1,51 @@
+{% set modruid    	= item.value.modruid|default(false) %}
+{% set serveraliases 	= item.value.serveraliases|default(false) %}
+{% set ssl 		= item.value.ssl|default(false) %}
+{% set ssl_certfile 	= item.value.ssl_certfile|default(false) %}
+{% set ssl_keyfile 	= item.value.ssl_keyfile|default(false) %}
+{% set ssl_chainfile 	= item.value.ssl_chainfile|default(false) %}
+{% set version 		= apache_version.stdout %}
+{% if ssl %}
+<VirtualHost {{ item.value.ssl_ip }}:443>
+     SSLEngine on
+{% else %}
+<VirtualHost *:80>
+{% endif %}
+     ServerName {{ item.value.name }}
+     DocumentRoot {{ item.value.docroot }}
+{% if serveraliases -%}
+{% for alias in serveraliases %}
+     ServerAlias {{ alias }}
+{% endfor %}
+{% endif %}{% if ssl_certfile %}
+
+     SSLCertificateFile /etc/apache2/{{ item.value.ssl_certfile }}
+{% endif %}{% if ssl_keyfile %}
+     SSLCertificateKeyFile /etc/apache2/{{ item.value.ssl_keyfile }}
+{% endif %}{% if ssl_chainfile %}
+     SSLCertificateChainFile /etc/apache2/{{ item.value.ssl_chainfile }}
+{% endif %}{% if modruid %}
+
+     RMode          config
+     RUidGid        {{ item.value.webuser }} {{ item.value.webuser }}
+{% endif %}
+          <Directory {{ item.value.docroot }}>
+          Options FollowSymLinks MultiViews
+          AllowOverride All
+{% if version >= '2.4' %}
+          Require all granted
+{% else %}
+          Order allow,deny
+          allow from all
+{% endif %}
+     </Directory>
+
+     LogLevel warn
+{% if ssl %}
+     ErrorLog /var/log/apache2/{{ item.value.name }}-ssl_error.log
+     CustomLog /var/log/apache2/{{ item.value.name }}-ssl_access.log combined
+{% else %}
+     ErrorLog /var/log/apache2/{{ item.value.name }}_error.log
+     CustomLog /var/log/apache2/{{ item.value.name }}_access.log combined
+{% endif %}
+</VirtualHost>

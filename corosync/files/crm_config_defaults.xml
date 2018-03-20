@@ -1,0 +1,7 @@
+<crm_config>
+  <cluster_property_set id="cib-bootstrap-options">
+    <nvpair name="default-resource-stickiness" value="100" id="cib-bootstrap-options-default-resource-stickiness"/>
+    <nvpair name="no-quorum-policy" value="ignore" id="cib-bootstrap-options-no-quorum-policy"/>
+    <nvpair name="stonith-enabled" value="false" id="cib-bootstrap-options-stonith-enabled"/>
+  </cluster_property_set>
+</crm_config>

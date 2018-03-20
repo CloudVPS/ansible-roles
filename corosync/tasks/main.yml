@@ -1,0 +1,115 @@
+---
+
+- name: debian | install necessary packages
+  apt:
+    name={{ item }}
+    state=present
+  with_items:
+    - corosync
+    - pacemaker
+  when: ansible_os_family == 'Debian'
+  tags: corosync
+
+
+- name: redhat | install necessary packages
+  yum:
+    name={{ item }}
+    state=present
+  with_items:
+    - corosync
+    - pacemaker
+  when: ansible_os_family == 'RedHat'
+  tags: corosync
+
+
+- debug: msg="run find / on the host to speed up the authkey generation"
+
+- name: generate corosync authkey
+  command: /usr/sbin/corosync-keygen
+  args:
+    creates: /etc/corosync/authkey
+  run_once: true
+  tags: corosync
+
+- name: copy corosync authkey to localhost
+  fetch:
+    src=/etc/corosync/authkey
+    dest=files/{{ host_group }}/corosync/authkey
+    flat=yes
+  tags: corosync
+
+- name: copy corosync authkey to all hosts
+  copy:
+    src=files/{{ host_group }}/corosync/authkey
+    dest=/etc/corosync/authkey
+    mode=0600
+    owner=root
+    group=root
+  tags: corosync
+
+- name: copy corosync configuration file
+  template:
+    src=corosync.conf.j2
+    dest=/etc/corosync/corosync.conf
+    owner=root
+    group=root
+    mode=0644
+  tags: corosync
+
+- name: create pacemaker service directory
+  file:
+    path=/etc/corosync/service.d/pcmk
+    state=directory
+  tags: corosync
+
+- name: copy pacemaker service file
+  copy:
+    src=pcmk
+    dest=/etc/corosync/service.d/pcmk
+    owner=root
+    group=root
+    mode=0644
+  when: ansible_os_family == 'Debian'
+  tags: corosync
+
+- name: debian | enable corosync startup
+  lineinfile:
+    dest=/etc/default/corosync
+    line="START=yes"
+    regexp="^START="
+  when: ansible_os_family == 'Debian'
+  tags: corosync
+
+- name: make sure /var/log/corosync/ exists
+  file:
+    dest=/var/log/corosync/
+    state=directory
+  tags: corosync
+
+- name: start and enable corosync service
+  service:
+    name=corosync
+    enabled=yes
+    state=running
+  tags: corosync
+
+- name: start and enable pacemaker service
+  service:
+    name=pacemaker
+    enabled=yes
+    state=running
+  tags: corosync
+
+- name: copy crm default config file
+  copy:
+    src=crm_config_defaults.xml
+    dest=/tmp/crm_config_defaults.xml
+  tags: corosync
+
+- name: import default crm configuration for two-node cluster
+  shell: cibadmin --replace --xml-file /tmp/crm_config_defaults.xml && touch /var/lib/corosync/.crm_config_defaults_imported
+  args:
+    creates: /var/lib/corosync/.crm_config_defaults_imported
+  run_once: true
+  tags: corosync
+

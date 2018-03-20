@@ -1,0 +1,82 @@
+---
+
+- name: create docroot
+  file:
+    path={{ item.value.docroot }}
+    state=directory
+    owner={{ item.value.webuser }}
+    group={{ item.value.webuser }}
+  with_dict: '{{ apache_vhost }}'
+  when: apache_vhost is defined
+  tags: apache-vhost
+
+- name: find the current apache version
+  shell: "/usr/sbin/apache2ctl -v | awk '/Server version/ {print $3}' | cut -f2 -d/ | cut -f1-2 -d."
+  register: apache_version
+  tags: apache-vhost
+  always_run: true
+
+- debug:
+    msg: "You are using Apache version {{ apache_version.stdout }}"
+  tags: apache-vhost
+
+- name: create vhost in apache site available
+  template:
+    src=vhost-conf.j2
+    dest=/etc/apache2/sites-available/{{ item.value.prio }}-{{ item.value.name }}.conf
+  with_dict: '{{ apache_vhost }}'
+  when: item.value.configfile is not defined
+  notify: reload apache
+  tags: apache-vhost
+
+- name: create vhost in apache with custom config
+  copy:
+    src={{ item.value.configfile }}
+    dest=/etc/apache2/sites-available/{{ item.value.prio }}-{{ item.value.name }}.conf
+  with_dict: '{{ apache_vhost }}'
+  when: item.value.configfile is defined
+  notify: reload apache
+  tags: apache-vhost
+
+- name: enable vhost for apache 2.2
+  command: a2ensite {{ item.value.prio }}-{{ item.value.name }}.conf
+    creates=/etc/apache2/sites-enabled/{{ item.value.prio }}-{{ item.value.name }}.conf
+  with_dict: '{{ apache_vhost }}'
+  when: apache_vhost is defined and apache_version.stdout | version_compare('2.2','<=') and item.value.configfile is not defined
+  notify: reload apache
+  tags: apache-vhost
+
+- name: enable vhost for apache 2.4
+  command: a2ensite {{ item.value.prio }}-{{ item.value.name }}
+    creates=/etc/apache2/sites-enabled/{{ item.value.prio }}-{{ item.value.name }}.conf
+  with_dict: '{{ apache_vhost }}'
+  when: apache_vhost is defined and apache_version.stdout | version_compare('2.4','>=') and item.value.configfile is not defined
+  notify: reload apache
+  tags: apache-vhost
+
+- name: copy ssl certificate file
+  copy: src={{ target_environment }}/files/{{ item.value.ssl_certfile }} dest=/etc/apache2/{{ item.value.ssl_certfile }}
+  with_dict: '{{ apache_vhost }}'
+  when: item.value.ssl_certfile is defined
+  tags: apache-vhost, ssl
+
+- name: copy ssl key file
+  copy: src={{ target_environment }}/files/{{ item.value.ssl_keyfile }} dest=/etc/apache2/{{ item.value.ssl_keyfile }}
+  with_dict: '{{ apache_vhost }}'
+  when: item.value.ssl_keyfile is defined
+  tags: apache-vhost, ssl
+
+- name: copy ssl chain file
+  copy: src={{ target_environment }}/files/{{ item.value.ssl_chainfile }} dest=/etc/apache2/{{ item.value.ssl_chainfile }}
+  with_dict: '{{ apache_vhost }}'
+  when: item.value.ssl_chainfile is defined
+  tags: apache-vhost, ssl
+
+- name: install mod-ruid2 packages
+  apt:
+    pkg=libapache2-mod-ruid2
+    state=installed
+  with_dict: '{{ apache_vhost }}'
+  when: item.value.modruid is defined and item.value.modruid == True
+  notify: reload apache
+  tags: apache-vhost

@@ -1,0 +1,46 @@
+{% set heartbeat_nic = 'ansible_' + heartbeat_nic|default('eth0') %}
+
+totem {
+	version:	2
+	transport:	udpu
+
+	#crypto_cipher:	none
+	#crypto_hash:	none
+	cluster_name:	{{ clustername }}
+
+	interface {
+		ringnumber:	0
+		bindnetaddr:	{{ ansible_eth0.ipv4.network }}
+		mcastport:	5405
+		ttl:		1
+	}
+}
+
+logging {
+	fileline:	off
+	to_logfile:	yes
+	to_syslog:	yes
+	logfile:	/var/log/corosync/corosync.log
+	debug:		off
+	timestamp:	on
+	logger_subsys {
+		subsys:	QUORUM
+		debug:	off
+	}
+}
+
+nodelist {
+{% for host in heartbeat_hosts %}
+	node {
+		ring0_addr:	{{ hostvars[host][heartbeat_nic]['ipv4']['address'] }}
+	}
+{% endfor %}
+}
+
+quorum {
+	# Enable and configure quorum subsystem (default: off)
+	# see also corosync.conf.5 and votequorum.5
+	provider:	corosync_votequorum
+	two_node:	1
+}
+

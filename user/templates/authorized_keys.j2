@@ -1,0 +1,5 @@
+{% set sshpubkeys    = item.sshpubkeys|default(false) %}
+{% for sshkey in sshpubkeys %}
+{{ sshkey }}
+{% endfor %}
+

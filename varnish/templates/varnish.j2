@@ -1,0 +1,22 @@
+{% set varnish       = varnish|default({}) %}
+{% set listenport    = varnish.listenport|default("6081") %}
+{% set cachesize     = varnish.cachesize|default("256m") %}
+{% set cachetype     = varnish.cachetype|default("malloc") %}
+{% set defaultvcl    = varnish.defaultvcl|default("/etc/varnish/default.vcl") %}
+
+# Should we start varnishd at boot?  Set to "no" to disable.
+START=yes
+
+# Maximum number of open files (for ulimit -n)
+NFILES=131072
+
+# Maximum locked memory size (for ulimit -l)
+# Used for locking the shared memory log in memory.  If you increase log size,
+# you need to increase this number as well
+MEMLOCK=82000
+
+DAEMON_OPTS="-a :{% if listenport %}{{ listenport }}{% endif %} \
+             -T localhost:6082 \
+             -f {% if defaultvcl %}{{ defaultvcl }}{% endif %} \
+             -S /etc/varnish/secret \
+             -s {% if cachetype %}{{ cachetype }}{% endif %},{% if cachesize %}{{ cachesize }}{% endif %}"

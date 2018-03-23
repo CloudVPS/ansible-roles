@@ -1,0 +1,44 @@
+---
+
+- name: install snmpd package | Debian
+  apt:
+    pkg=snmpd
+    state=installed
+  tags:
+    - snmp
+  when: ansible_os_family == 'Debian'
+
+- name: install snmpd package | RedHat
+  yum:
+    pkg=net-snmp
+    state=installed
+  tags:
+    - snmp
+  when: ansible_os_family == 'RedHat'
+
+- name: configure snmpd.conf
+  template: 
+    src=snmpd.conf.j2
+    dest=/etc/snmp/snmpd.conf
+    backup=yes
+  notify:
+    - restart snmpd
+  tags:
+    - snmp
+
+- name: configure default snmpd configuration
+  template: 
+    src=snmpd.j2
+    dest=/etc/default/snmpd
+    backup=yes
+  notify:
+    - restart snmpd
+  tags:
+    - snmp
+
+- name: ensure snmpd is running
+  service:
+    name=snmpd
+    state=started
+  tags:
+    - snmp

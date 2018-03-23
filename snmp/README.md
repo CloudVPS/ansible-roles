@@ -38,9 +38,9 @@ No extra steps needed.
 
 ## Role Variables
 
-|Name|Type|Description|Default|
-|----|----|-----------|-------|
-`community`|String|SNMP community|`rocommunity`
-`systemlocation`|String|Location of the system|`CLOUDVPS CLOUD`
-`systemcontact`|String|System contact email|``
-`monitor`|String|IP from the SNMP agent|``
+|Name|Type|Description|Default|Required|
+|----|----|-----------|-------|-------|
+`community`|String|SNMP community|`rocommunity`|yes
+`systemlocation`|String|Location of the system|`CLOUDVPS CLOUD`|yes
+`systemcontact`|String|System contact email|`root@localhost`|yes
+`monitor`|String|IP from the SNMP agent|`127.0.0.1`|yes

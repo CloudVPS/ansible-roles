@@ -171,7 +171,7 @@
     backup=yes
   notify:
     - restart nrpe debian
-  when: ansible_distribution == "Ubuntu" and nrpe.allowed_hosts is defined
+  when: ansible_distribution == "Ubuntu" and nrpe.allowed_hosts is defined or nrpe_allowed_hosts_list is defined
   tags:
     - nrpe
     - nrpe-config

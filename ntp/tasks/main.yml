@@ -1,0 +1,44 @@
+---
+
+- name: install ntp packages | Debian
+  apt:
+    pkg=ntp
+    state=installed
+  register: ntp_install
+  tags:
+    - ntp
+  when: ansible_os_family == 'Debian'
+
+- name: install ntp packages | RedHat
+  yum:
+    pkg=ntp
+    state=installed
+  register: ntp_install
+  tags:
+    - ntp
+  when: ansible_os_family == 'RedHat'
+
+- name: Set ntp clock sync
+  command: ntpd -gq
+  when: ntp_install|changed
+  ignore_errors: yes
+  failed_when: False
+  tags:
+    - ntp
+
+- name: ensure ntp is running | Debian
+  service:
+    name=ntp
+    state=started
+  tags:
+    - ntp
+  when: ansible_os_family == 'Debian'
+
+- name: ensure ntpd is running | RedHat
+  service:
+    name=ntpd
+    state=started
+  tags:
+    - ntp
+  when: ansible_os_family == 'RedHat'
+

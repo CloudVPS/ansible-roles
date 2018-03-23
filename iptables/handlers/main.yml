@@ -1,0 +1,13 @@
+---
+
+- name: reload ip4tables
+  shell: /sbin/iptables-restore < /etc/iptables/rules.v4
+
+- name: save ip4tables
+  shell: /sbin/iptables-save > /etc/ip4tables/rules.v4
+
+- name: reload ip6tables
+  shell: /sbin/ip6tables-restore < /etc/iptables/rules.v6
+
+- name: save ip6tables
+  shell: /sbin/ip6tables-save > /etc/iptables/rules.v6

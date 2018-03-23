@@ -1,0 +1,24 @@
+---
+
+  - name: prepare apt packages
+    apt:
+      pkg={{item}}
+      state=present
+    with_items:
+     - elasticsearch
+    tags: elasticsearch
+
+  - name: set elasticsearch configuration
+    template:
+     src: "elasticsearch.yml.j2"
+     dest: "/etc/elasticsearch/elasticsearch.yml"
+     backup: yes
+    tags: elasticsearch
+
+  - name: enable elasticsearch on boot
+    service:
+      name="elasticsearch"
+      enabled=yes
+      state=started
+    tags: elasticsearch
+

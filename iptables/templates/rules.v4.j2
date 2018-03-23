@@ -1,0 +1,26 @@
+{% set ip4tables   = ip4tables|default(false) %}
+{% set nat         = ip4tables.nat|default(false) %}
+{% set filter      = ip4tables.filter|default(false) %}
+
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+{% if nat %}
+{% for rule in nat %}
+{{ rule }}
+{% endfor %}
+{% endif %}
+COMMIT
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+{% if filter %}
+{% for rule in filter %}
+{{ rule }}
+{% endfor %}
+{% endif %}
+COMMIT
+

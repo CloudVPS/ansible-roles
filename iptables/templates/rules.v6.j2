@@ -1,0 +1,12 @@
+{% set ip6tables   = ip6tables|default(false) %}
+{% set filter      = ip6tables.filter|default(false) %}
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+{% if filter %}
+{% for rule in filter %}
+{{ rule }}
+{% endfor %}
+{% endif %}
+COMMIT

@@ -1,0 +1,41 @@
+---
+
+- name: create iptables config directory
+  file:
+    path=/etc/iptables/
+    state=directory
+  tags:
+    - iptables
+
+- name: set iptables.v4 template
+  template: 
+    src=rules.v4.j2
+    dest=/etc/iptables/rules.v4
+    backup=yes
+  notify:
+    - reload ip4tables
+  tags:
+    - iptables
+
+- name: set iptables.v6 template
+  template: 
+    src=rules.v6.j2
+    dest=/etc/iptables/rules.v6
+    backup=yes
+  notify:
+    - reload ip6tables
+  tags:
+    - iptables
+
+- name: create iptables up script for network interface(s)
+  copy: 
+    src=iptables
+    dest=/etc/network/if-up.d/iptables
+    mode=0755
+  tags:
+    - iptables
+
+- name: populate iptables with our rules
+  command: /etc/network/if-up.d/iptables
+  tags:
+    - iptables

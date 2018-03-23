@@ -1,0 +1,73 @@
+{% set haproxy     = haproxy|default(false) %}
+
+# Managed by ansible, please do not edit manually as your
+# changes are overwritten.
+
+global
+       log 127.0.0.1   local0 err
+       log 127.0.0.1   local1 err
+       stats socket     /var/run/haproxy.sock mode 0600 level admin
+       maxconn         4096
+       user            haproxy
+       group           haproxy
+       daemon
+
+defaults
+      log             global
+      mode            tcp
+      option          tcplog
+      retries         3
+      maxconn         20000
+      contimeout      5000
+      clitimeout      50000
+      srvtimeout      50000
+
+frontend http-in
+      mode http
+      option forwardfor
+      option http-server-close
+      option httpclose
+      bind {{ haproxy.http_in|default("*") }}:80
+      default_backend app
+
+listen mysql
+      bind            {{ haproxy.mysql_vip|default("*") }}:3306
+      mode            tcp
+      balance         roundrobin
+
+      option          httpchk
+      server          mysql_backup {{ haproxy.mysql_backup_ip|default("127.0.1.100") }}:3306 check port 9200 inter 5000 backup fall 3 rise 10
+      server          mysql_master {{ haproxy.mysql_master_ip|default("127.0.1.110") }}:3306 check port 9200 inter 5000 fall 3 rise 10
+
+backend app
+      mode            http
+      balance         leastconn
+      cookie          SERVERID insert nocache indirect
+      option          httpchk HEAD /health.php HTTP/1.1\r\nHost:\ {{ haproxy.check_vhost|default("localhost")}}
+
+      server          app1 {{ haproxy.realserver_1|default("127.0.1.1") }}:80 check cookie app1 rise 10 fall 3 slowstart 10m
+      server          app2 {{ haproxy.realserver_2|default("127.0.1.2") }}:80 check cookie app2 rise 10 fall 3 slowstart 10m
+      option          redispatch
+      retries         10
+
+frontend Statistics
+      mode http
+      bind {{ haproxy.stats_listen_ip|default("*") }}:{{ haproxy.stats_listen_port|default("8000") }}
+      option contstats
+      default_backend HAProxy-Statistics
+
+userlist UsersFor_HAProxyStatistics
+      group admin users admin
+      user admin insecure-password {{ haproxy.admin_password|default("changeme") }}
+
+backend HAProxy-Statistics
+      mode http
+      stats enable
+      stats uri /stats
+      stats refresh 10s
+      stats show-node
+      stats show-legends
+      acl AuthOkay_ReadOnly http_auth(UsersFor_HAProxyStatistics)
+      acl AuthOkay_Admin http_auth_group(UsersFor_HAProxyStatistics) admin
+      stats http-request auth realm HAProxy-Statistics unless AuthOkay_ReadOnly
+      stats admin if AuthOkay_Admin

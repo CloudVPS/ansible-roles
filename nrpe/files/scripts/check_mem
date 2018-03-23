@@ -1,0 +1,112 @@
+#!/bin/bash
+
+PROGNAME=`basename $0`
+VERSION="Version 1.0"
+AUTHOR="2013, Mark Schouten <mark@tuxis.nl>"
+
+UE=3
+CE=2
+WE=1
+OK=0
+
+usage(){
+    echo "$PROGNAME $VERSION"
+    echo "$AUTHOR"
+    echo ""
+    echo "This is a Nagios plugin that will check the curremt memory usage of the system."
+    echo ""
+    echo "OPTIONS:"
+    echo " -h Shows this help"
+    echo " -v Shows the Version"
+    echo " -w sets the warning level"
+    echo " -c sets the critical level"
+    echo " -t set the type to check. (s)wap or (p)hysical"
+    exit $UE
+}
+
+while getopts "hvw:c:t:" opt; do
+    case $opt in
+	    h)
+	        usage
+	        exit
+	    ;;
+	    v)
+	        print_version
+	        exit
+	    ;;
+	    w)
+	        W=$OPTARG
+	    ;;
+	    c)
+	        C=$OPTARG
+	    ;;
+	    t)
+            [ "$OPTARG" = "s" -o "$OPTARG" = "p" ] || {
+                echo "Invalid type set, should be (p)hysical or (s)wap"
+                exit 1
+            }
+	        T=$OPTARG
+	    ;;
+	    \?)
+	        echo "Invalid option: -$OPTARG" >&2
+	        exit 1
+	    ;;
+	    :) 
+	        echo "Option -$OPTARG requires an argument." >&2
+	        exit 1
+	    ;;
+    esac
+done
+
+[ -z $W ] && {
+    echo "No value for warning set"
+    usage
+}
+
+[ -z $C ] && {
+    echo "No value for critical set"
+    usage
+}
+
+[ -z $T ] && {
+    echo "No value for critical set"
+    usage
+}
+
+if [ "$T" = "p" ]; then
+    MEM_TOTAL=`grep "^MemTotal" /proc/meminfo|awk '{print $2}'`
+    MEM_FREE=`grep "^MemFree" /proc/meminfo|awk '{print $2}'`
+    BUFFERS=`grep "^Buffers" /proc/meminfo|awk '{print $2}'`
+    CACHED=`grep "^Cached" /proc/meminfo|awk '{print $2}'`
+
+    P_MEM_FREE=`echo "scale=2; ( $MEM_FREE + $BUFFERS + $CACHED ) / $MEM_TOTAL * 100" | bc -l | sed 's/.[0-9][0-9]//'`
+    P_MEM_USED=`echo "scale=0; 100 - $P_MEM_FREE" | bc -l`
+
+    if [ $P_MEM_USED -gt $C ]; then
+        echo "CRITICAL - Memoryusage above critical value of $C% | Used: $P_MEM_USED%; Free: $P_MEM_FREE%"
+        exit $CE
+    elif [ $P_MEM_USED -gt $W ]; then
+        echo "WARNING - Memoryusage above warning value of $W% | Used: $P_MEM_USED%; Free: $P_MEM_FREE%"
+        exit $WE
+    else
+        echo "OK - Memoryusage within acceptable levels | Used: $P_MEM_USED%; Free: $P_MEM_FREE%"
+        exit $OK
+    fi
+elif [ "$T" = "s" ]; then
+    MEM_TOTAL=`grep "^SwapTotal" /proc/meminfo|awk '{print $2}'`
+    MEM_FREE=`grep "^SwapFree" /proc/meminfo|awk '{print $2}'`
+
+    P_MEM_FREE=`echo "scale=2; $MEM_FREE / $MEM_TOTAL * 100" | bc -l | sed 's/.[0-9][0-9]//'`
+    P_MEM_USED=`echo "scale=0; 100 - $P_MEM_FREE" | bc -l`
+
+    if [ $P_MEM_USED -gt $C ]; then
+        echo "CRITICAL - Memoryusage above critical value of $C% | Used: $P_MEM_USED%; Free: $P_MEM_FREE%"
+        exit $CE
+    elif [ $P_MEM_USED -gt $W ]; then
+        echo "WARNING - Memoryusage above warning value of $W% | Used: $P_MEM_USED%; Free: $P_MEM_FREE%"
+        exit $WE
+    else
+        echo "OK - Memoryusage within acceptable levels | Used: $P_MEM_USED%; Free: $P_MEM_FREE%"
+        exit $OK
+    fi
+fi

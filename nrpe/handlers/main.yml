@@ -1,0 +1,21 @@
+---
+- name: restart nagios-nrpe-server
+  service:
+    name=nagios-nrpe-server
+    state=restarted
+
+#Ubuntu
+- name: restart nrpe debian
+  service:
+    name=nagios-nrpe-server
+    state=restarted
+  when: ansible_os_family == "Debian"
+
+#RedHat
+- name: restart nrpe redhat
+  service:
+    name=nrpe
+    state=restarted
+  when: ansible_os_family == 'RedHat'
+  
+    

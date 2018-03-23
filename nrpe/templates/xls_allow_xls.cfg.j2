@@ -1,0 +1,12 @@
+{% set nrpe        = nrpe|default(false) %}
+{% set allowed     = nrpe.allowed_hosts|default(false) %}
+{% set allowedlist     = nrpe_allowed_hosts_list|default(false) %}
+
+{% if allowed -%}
+allowed_hosts={% for ip in allowed %}{{ ip }},{% endfor %}
+{% else %}
+{% if allowedlist -%}
+allowed_hosts={{ allowedlist }}
+{% else %}
+allowed_hosts=10.0.0.1,10.0.0.2,10.0.0.3
+{% endif %}{% endif %}

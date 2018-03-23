@@ -1,0 +1,31 @@
+---
+
+- name: install nfs server
+  apt:
+    name="{{ item }}"
+    state=installed
+  with_items:
+    - nfs-common
+    - nfs-kernel-server
+  tags:
+   - nfs-server
+
+- name: Copy exports file
+  template:
+    src: "{{ nfs_exports }}"
+    dest: /etc/exports
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart nfs
+  when: nfs_exports is defined
+  tags:
+   - nfs-server
+
+- name: ensure nfs server is running
+  service:
+    name=nfs-kernel-server
+    state=started
+    enabled=yes
+  tags:
+   - nfs-server

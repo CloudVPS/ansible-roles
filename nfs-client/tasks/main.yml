@@ -1,0 +1,33 @@
+---
+
+- name: create mount point
+  file:
+    path={{ mountpoint }}
+    state=directory
+    owner={{ mountpoint_owner }}
+    group={{ mountpoint_owner }}
+  tags: nfs
+
+- name: Install nfs client
+  apt:
+    pkg={{ item }}
+    state=present
+  with_items:
+    - nfs-common
+  tags:
+    - nfs
+
+- name: add nfs mount to fstab
+  lineinfile:
+    dest=/etc/fstab
+    regexp="^{{ nfs_export }}"
+    line="{{ nfs_export }}     {{ mountpoint }}  nfs rsize=8192,wsize=8192,timeo=14,intr"
+    state=present
+  tags:
+    - nfs
+
+- name: mount all
+  shell: mount -a
+  tags:
+    - nfs
+

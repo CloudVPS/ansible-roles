@@ -1,0 +1,106 @@
+---
+
+- name: 'add keepalived ppa'
+  apt_repository:
+    repo: 'ppa:keepalived/stable'
+
+- name: install keepalived
+  apt: 
+    pkg=keepalived
+    update_cache=yes
+    state=installed
+  tags:
+    - keepalived
+  
+- name: find the current keepalived version
+  shell: '/usr/sbin/keepalived -v 2>&1 | cut -f3 -d v | cut -f1-3 -d. | cut -f1 -d " "'
+  register: keepalived_version
+  tags: keepalived
+  check_mode: no
+#  always_run: true
+
+- debug:
+    msg: "You are using keepalived version {{ keepalived_version.stdout }}"
+  tags: keepalived
+
+- name: set keepalived template for 1.2.2
+  template:
+    src=keepalived.conf.j2
+    dest=/etc/keepalived/keepalived.conf
+    backup=yes
+  notify:
+    - reload keepalived
+  when: keepalived_external_template is not defined and keepalived_version.stdout | version_compare('1.2.19','<')
+  tags:
+    - keepalived
+
+- name: set keepalived template for 1.2.19
+  template:
+    src=keepalived.conf.j2
+    dest=/etc/keepalived/keepalived.conf
+    backup=yes
+  notify:
+    - reload keepalived
+  when: keepalived_external_template is not defined and keepalived_version.stdout | version_compare('1.2.19','>=') 
+  tags:
+    - keepalived
+
+- name: push external keepalived configuration template
+  template:
+    src={{ keepalived_external_template }}
+    dest=/etc/keepalived/keepalived.conf
+    mode=0644
+    owner=root
+    group=root
+    backup=yes
+  notify:
+    - reload keepalived
+  when: keepalived_external_template is defined
+  tags:
+    - keepalived
+  
+- name: check if script exists
+  stat: 
+    path=/usr/local/bin/keepalived-extern.sh
+  register: externsh
+  tags: keepalived
+
+- name: create script if it does not exist
+  copy:
+    content="#!/bin/bash"
+    dest=/usr/local/bin/keepalived-extern.sh
+    mode=0755
+  when: externsh.stat.exists == false
+  tags: keepalived
+
+- name: Ensure keepalived is running
+  service: 
+    name=keepalived 
+    state=started
+    enabled=yes
+    pattern=/usr/sbin/keepalived    
+  tags:
+    - keepalived
+  
+- name: set ipforwarding 
+  sysctl:
+   name="net.ipv4.ip_forward" 
+   value=1 
+   sysctl_set=yes 
+   state=present 
+   reload=yes
+   sysctl_file=/etc/sysctl.conf
+  tags:
+    - keepalived
+  
+- name: set ip nonlocal bind 
+  sysctl:
+   name="net.ipv4.ip_nonlocal_bind" 
+   value=1 
+   sysctl_set=yes 
+   state=present 
+   reload=yes
+   sysctl_file=/etc/sysctl.conf
+  tags:
+    - keepalived
+  

@@ -1,0 +1,13 @@
+---
+
+- name: reload keepalived
+  service: 
+    name=keepalived 
+    state=reloaded
+    pattern=/usr/sbin/keepalived
+
+- name: restart keepalived
+  service: 
+    name=keepalived 
+    state=restarted
+    pattern=/usr/sbin/keepalived    

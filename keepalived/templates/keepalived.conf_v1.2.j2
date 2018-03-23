@@ -1,0 +1,87 @@
+{% set extvip     = keepalived.extvip|default(false) %}
+{% set extnic     = keepalived.extnic|default('eth0') %}
+{% set intvip     = keepalived.intvip|default(false) %}
+{% set intnic     = keepalived.intnic|default('eth1') %}
+{% set state      = keepalived.state|default("EQUAL") %}
+{% set email      = keepalived.notification_email|default(false) %}
+{% set prio       = keepalived.prio|default(false) %}
+
+# This file is managed by ansible, please do not edit manually.
+global_defs {
+   notification_email {
+{% if email -%}
+{% for address in email %}
+          {{ address }}
+{% endfor %}
+{% else %}
+        system@example.com
+{% endif %}
+   }
+   notification_email_from {{ ansible_hostname }}@{{ ansible_fqdn }}
+   smtp_server 194.60.207.37
+   smtp_connect_timeout 30
+   router_id {{ ansible_hostname }}
+   vrrp_garp_master_refresh 1
+   vrrp_garp_master_refresh_repeat 8
+}
+
+vrrp_sync_group VG_1 {
+     group {
+{% if extvip %}
+        EXTERN
+{% endif %}
+{% if intvip %}
+        INTERN
+{% endif %}
+     }
+}
+
+{% if extvip -%}
+vrrp_instance EXTERN {
+    interface {{ extnic }}
+    virtual_router_id {{ keepalived.router_id }}
+    state {{ state }}
+{% if prio %}
+    priority {{ prio }}
+{% endif %}
+    advert_int 1
+    smtp_alert
+    notify /usr/local/bin/keepalived-extern.sh
+
+    authentication {
+        auth_type PASS
+        auth_pass {{ keepalived.pass }}
+    }
+
+    virtual_ipaddress {
+{% for ip in extvip %}
+        {{ ip }}
+{% endfor %}
+    }
+{% endif %}
+}
+
+{% if intvip -%}
+vrrp_instance INTERN {
+    interface {{ intnic }} 
+    virtual_router_id {{ keepalived.router_id }}
+    state {{ state }}
+{% if prio %}
+    priority {{ prio }}
+{% endif %}
+    advert_int 1
+    smtp_alert
+    notify /usr/local/bin/keepalived-intern.sh
+
+    authentication {
+        auth_type PASS
+        auth_pass {{ keepalived.pass }}
+    }
+
+    virtual_ipaddress {
+{% for ip in intvip %}
+        {{ ip }}
+{% endfor %}
+    }
+{% endif %}
+}

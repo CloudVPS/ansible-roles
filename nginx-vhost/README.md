@@ -38,6 +38,7 @@ Include in your playbook like this:
 ## Requirements / Dependencies
 
 * php-fpm
+* nginx package
 
 ## Supported system
 

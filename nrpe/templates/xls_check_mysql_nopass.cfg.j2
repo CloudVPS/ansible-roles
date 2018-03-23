@@ -1,0 +1,2 @@
+command[check_mysql_nopass]=/usr/lib/nagios/plugins/check_mysql -H localhost -u {{ mysql_check_user }} -p {{ mysql_check_pass }} 
+command[check_mysql_repl_nopass]=/usr/lib/nagios/plugins/check_mysql_repl.pl --user={{ mysql_check_user }} --password={{ mysql_check_pass }}

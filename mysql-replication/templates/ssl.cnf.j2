@@ -1,0 +1,10 @@
+[mysqld]
+# SSL
+ssl-ca=/etc/mysql/ca-cert.pem
+ssl-cert=/etc/mysql/server-cert.pem
+ssl-key=/etc/mysql/server-key.pem
+
+[client]
+ssl-ca=/etc/mysql/ca-cert.pem
+ssl-key=/etc/mysql/client-key.pem
+ssl-cert=/etc/mysql/client-cert.pem

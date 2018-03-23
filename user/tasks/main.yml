@@ -1,0 +1,67 @@
+---
+
+- name: create groups
+  group:
+    name={{ item }}
+  with_items: '{{group}}'
+  when: group is defined
+  tags: user
+
+- name: create users
+  user: 
+    name={{ item.name }}
+    password={{ item.password }}
+    home={{ item.home }}
+    createhome={{ item.createhome|default("yes") }}
+    groups={{ item.groups|default("users") }}
+    append=yes
+    state={{ item.state|default("present") }}
+    shell={{ item.shell|default("/bin/bash") }}
+    update_password={{ item.update_password|default("on_create") }}
+    generate_ssh_key={{ item.generate_ssh_key|default("yes") }}
+  with_items: '{{user}}'
+  when: user is defined
+  tags: user
+
+- name: create {{ item.home }}/.ssh/
+  file:
+    path={{ item.home }}/.ssh
+    state=directory
+    group={{ item.name }}
+    owner={{ item.name }}
+    mode=0700
+  with_items: '{{user}}'
+  when: user is defined and (item.sshpubkey is defined or item.sshpubkeys is defined)
+  ignore_errors: true
+  tags: user
+
+- name: create .ssh/authorized_keys
+  file:
+    path={{ item.home }}/.ssh/authorized_keys
+    state=touch
+  with_items: '{{user}}'
+  when: user is defined and item.sshpubkey is defined
+  ignore_errors: true
+  tags: user
+
+- name: add ssh-pub-key
+  lineinfile:
+    dest={{ item.home }}/.ssh/authorized_keys
+    line={{ item.sshpubkey }}
+  with_items: '{{user}}'
+  when: user is defined and item.sshpubkey is defined
+  ignore_errors: true
+  tags: user
+
+- name: add ssh-pub-key via template
+  template:
+    src=authorized_keys.j2
+    dest={{ item.home }}/.ssh/authorized_keys
+    backup=yes
+  with_items: '{{user}}'
+  when: user is defined and item.sshpubkeys is defined
+  ignore_errors: true
+  tags:
+    - user
+    - sshpubkeys
+

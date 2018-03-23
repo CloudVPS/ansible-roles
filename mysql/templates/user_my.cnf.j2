@@ -1,0 +1,13 @@
+# Ansible managed, please do not edit manually.
+[mysql]
+user=root
+password={{ mysql.rootpassword }}
+[client]
+user=root
+password={{ mysql.rootpassword }}
+[mysqldump]
+user=root
+password={{ mysql.rootpassword }}
+[mytop]
+user=root
+password={{ mysql.rootpassword }}

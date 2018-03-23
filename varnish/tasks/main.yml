@@ -1,0 +1,82 @@
+---
+
+- name: install varnish cache
+  apt:
+    name=varnish
+    state=present
+    update_cache=yes
+  tags:
+    - varnish
+
+- name: set default varnish template
+  template:
+    src=varnish.j2
+    dest=/etc/default/varnish
+    backup=yes
+  when: varnish_external_default_template is not defined and varnish_external_default_file is not defined
+  notify:
+    - restart varnish
+  tags:
+    - varnish
+
+- name: set external varnish default template
+  template:
+    src={{ varnish_external_default_template }}
+    dest=/etc/default/varnish
+    backup=yes
+  when: varnish_external_default_template is defined
+  notify:
+    - restart varnish
+  tags:
+    - varnish
+
+- name: set external varnish default file
+  template:
+    src={{ varnish_external_default_file }}
+    dest=/etc/default/varnish
+    backup=yes
+  when: varnish_external_default_file is defined
+  notify:
+    - restart varnish
+  tags:
+    - varnish
+
+- name: push configuration
+  template:
+    src=default.vcl.j2
+    dest=/etc/varnish/default.vcl
+    backup=yes
+  notify:
+  - reload varnish
+  when: varnish_external_template is not defined and varnish_external_file is not defined
+  tags:
+    - varnish
+
+- name: push external varnish configuration template
+  template:
+    src={{ varnish_external_template }}
+    dest=/etc/varnish/default.vcl
+    backup=yes
+  notify:
+  - reload varnish
+  when: varnish_external_template is defined
+  tags:
+    - varnish
+
+- name: push external varnish configuration file
+  copy:
+    src={{ varnish_external_file }}
+    dest=/etc/varnish/default.vcl
+    backup=yes
+  notify:
+  - reload varnish
+  when: varnish_external_file is defined
+  tags:
+    - varnish
+
+- name: ensure varnish is running
+  service:
+    name=varnish
+    state=started
+  tags:
+    - varnish

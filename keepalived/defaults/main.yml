@@ -1,0 +1,10 @@
+---
+
+keepalived:
+  state: EQUAL
+  prio: 100
+  pass: changem3
+  router_id: 13
+  ext_router_id: 14
+  intvip:
+    - '10.0.0.1/24'

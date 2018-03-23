@@ -1,0 +1,10 @@
+[mysqld]
+
+log-bin                     = mysql-bin
+bind-address                = 0.0.0.0
+server-id                   = {{ mysqlreplication.server_id }}
+auto_increment_increment    = {{ mysqlreplication.increment }}
+auto_increment_offset       = {{ mysqlreplication.incrementoffset }}
+innodb_file_per_table       = 1
+
+skip-name-resolve

@@ -1,0 +1,59 @@
+---
+
+- name: install rsyslog packages
+  apt:
+    pkg=rsyslog
+    state=installed
+  tags:
+    - rsyslog
+
+- name: push default internal rsyslog configuration template
+  template:
+    src=internal-udp-conf.j2
+    dest=/etc/rsyslog.conf
+    mode=0644
+    owner=root
+    group=root
+    backup=yes
+  notify:
+  - restart rsyslog
+  when: rsyslog_conf_file is undefined and rsyslog_remote|default(False) == False
+  tags:
+    - rsyslog
+
+- name: push default external syslog configuration template
+  template:
+    src=external-udp-conf.j2
+    dest=/etc/rsyslog.conf
+    mode=0644
+    owner=root
+    group=root
+    backup=yes
+  notify:
+  - restart rsyslog
+  when: rsyslog_conf_file is undefined and rsyslog_remote|default(False) == True
+  tags:
+    - rsyslog
+
+- name: push custom rsyslog configuration file
+  copy:
+    src={{ rsyslog_conf_file }}
+    dest=/etc/rsyslog.conf
+    mode=0644
+    owner=root
+    group=root
+    backup=yes
+  notify:
+  - restart rsyslog
+  when: rsyslog_conf_file is defined
+  tags:
+    - rsyslog
+
+- name: ensure rsyslog is running
+  service:
+    name=rsyslog
+    state=started
+  tags:
+    - rsyslog
+
+

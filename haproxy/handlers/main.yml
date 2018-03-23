@@ -1,0 +1,16 @@
+---
+
+- name: restart haproxy
+  service: 
+    name=haproxy 
+    state=restarted
+
+- name: reload haproxy
+  service: 
+    name=haproxy 
+    state=reloaded
+
+- name: stop haproxy
+  service: 
+    name=haproxy 
+    state=stopped

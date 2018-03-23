@@ -1,0 +1,66 @@
+#!/bin/bash
+{% set mysql_haproxy_check     = mysql_haproxy_check|default(false) %}
+{% set check_password     = mysql_haproxy_check.password|default("mysqlchkusr") %}
+{% set check_user         = mysql_haproxy_check.user|default("changeme") %}
+# This script checks if a mysql server is running. It will return:
+#
+# HTTP/1.1 200 OK (if mysql is running smoothly)
+#
+# - OR -
+#
+# HTTP/1.1 503 Service Unavailable (else)
+#
+# Author: Unai Rodriguez
+# Enhanced by: Rosco Nap (2012)
+# Enhanced by Mark Ruys (2013)
+#
+# It is recommended that a low-privileged-mysql user is created to be used by
+# this script. Something like this:
+#
+# GRANT SELECT ON mysql.* TO 'mysqlchkusr'@'localhost' IDENTIFIED BY 'secret' WITH GRANT OPTION;
+# Only use grant when you also use this user for the mysqlchecks in nagios.
+
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USERNAME={{ check_user }}
+MYSQL_PASSWORD={{ check_password }}
+LOG_FILE=/tmp/mysqlchk.err
+QUERY="/* ping */ SELECT 1" # "SHOW DATABASES"
+
+#
+# We perform a simple query that should return a few results.
+
+OUTPUT=$(/usr/bin/mysql --skip-column-names --unbuffered \
+   --host=$MYSQL_HOST --port=$MYSQL_PORT --user=$MYSQL_USERNAME --password="$MYSQL_PASSWORD" \
+   --execute="${QUERY}" 2>> ${LOG_FILE})
+
+
+# Check the output. If it is not empty then everything is fine and we return
+# something. Else, we just do not return anything.
+
+if [ "${OUTPUT}" == "1" ]
+then
+    # Cluster node state is 'OK', so return HTTP 200
+
+    /bin/echo -en "HTTP/1.1 200 OK\r\n"
+    /bin/echo -en "Content-Type: text/plain\r\n"
+    /bin/echo -en "Connection: close\r\n"
+    /bin/echo -en "Content-Length: 31\r\n"
+    /bin/echo -en "\r\n"
+    /bin/echo -en "Cluster node state is good.\r\n"
+    /bin/echo -en "\r\n"
+    exit 0
+else
+    # Cluster node local state is 'BAD', so return HTTP 503
+
+    date >> ${LOG_FILE}
+
+    /bin/echo -en "HTTP/1.1 503 Service Unavailable\r\n"
+    /bin/echo -en "Content-Type: text/plain\r\n"
+    /bin/echo -en "Connection: close\r\n"
+    /bin/echo -en "Content-Length: 30\r\n"
+    /bin/echo -en "\r\n"
+    /bin/echo -en "Cluster node state is BAD.\r\n"
+    /bin/echo -en "\r\n"
+    exit 1
+fi

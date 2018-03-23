@@ -1,0 +1,18 @@
+{% set mysql_haproxy_check     = mysql_haproxy_check|default(false) %}
+{% set only_from        = mysql_haproxy_check.only_from|default("10.0.0.0/24") %}
+{% set xinetd_port        = mysql_haproxy_check.xinetd_port|default("9200") %}
+
+service mysqlchk
+{
+        type            = UNLISTED
+        flags           = REUSE
+        socket_type     = stream
+        port            = {{ xinetd_port }}
+        wait            = no
+        user            = nobody
+        server          = /usr/local/bin/scripts/mysqlchk
+        log_on_failure  += USERID
+        disable         = no
+        only_from       = {{ only_from }}
+        per_source      = UNLIMITED
+}

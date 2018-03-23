@@ -1,0 +1,68 @@
+---
+
+- name: RedHat | Check if apache2 is installed
+  command: rpm -q apache2
+  register: apache2_installed
+
+- name: RedHat | Check if php-fpm is installed
+  command: rpm -q php-fpm
+  register: phpfpm_installed
+
+- name: RedHat | Fetch the New Relic repository rpm
+  get_url:
+    dest=/tmp/newrelic-repo.rpm
+    url=https://yum.newrelic.com/pub/newrelic/el5/x86_64/newrelic-repo-5-3.noarch.rpm
+  tags: newrelic-php
+
+- name: RedHat | Install New Relic repository rpm
+  yum:
+    name=/tmp/newrelic-repo.rpm
+    state=present
+  tags: newrelic-php
+
+- name: RedHat | Install the New Relic PHP agent
+  yum:
+   name=newrelic-php5
+   state=present
+  tags: newrelic-php
+
+- name: RedHat | Run New Relic installer
+  shell: NR_INSTALL_SILENT=true newrelic-install install
+  tags: newrelic-php
+
+- name: RedHat | Remove the default New Relic configuration
+  file:
+    name: /etc/php5/{{ item }}/conf.d/newrelic.ini
+    state: absent
+  with_items:
+    - apache2
+    - cli
+    - fpm
+  tags: newrelic-php
+
+- name: RedHat | Configure the New Relic PHP agent
+  template:
+    src: newrelic.ini.j2
+    dest: /etc/php5/mods-available/newrelic.ini
+    group: root
+    owner: root
+    mode: 0640
+  tags: newrelic-php
+
+- name: RedHat | Enable the New Relic extension
+  shell: php5enmod -s ALL newrelic creates=/etc/php5/cli/conf.d/20-newrelic.ini
+  tags: newrelic-php
+
+- name: RedHat | Restart PHP-FPM
+  service:
+    name=php5-fpm
+    state=restarted
+  ignore_errors: yes
+  tags: newrelic-php
+
+- name: RedHat | Restart Apache2
+  service:
+    name=apache2
+    state=restarted
+  ignore_errors: yes
+  tags: newrelic-php

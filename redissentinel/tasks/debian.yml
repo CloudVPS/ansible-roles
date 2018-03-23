@@ -1,0 +1,95 @@
+---
+
+  - name: prep os for more open files
+    lineinfile:
+      line="{{ item }}"
+      dest=/etc/security/limits.conf
+    with_items:
+      - "ubuntu soft nofile 65535"
+      - "ubuntu hard nofile 65535"
+    tags: redis
+
+  - name: prep os for more tcp backlog
+    sysctl:
+      name=net.core.somaxconn
+      value=512
+      state=present
+    tags:
+      - redis
+
+  - name: install packages
+    apt:
+      pkg="{{ item }}"
+      state=installed
+    with_items:
+      - redis-sentinel
+#      - redis-server
+      - redis-tools
+    register: aptredis
+    tags: redis
+
+  - name: set haredis haproxy notification script
+    copy:
+     src="notification.sh"
+     dest="/var/lib/redis/notification.sh"
+     owner=redis
+     group=redis
+     mode=0755
+    notify:
+      - restart redis-sentinel
+    tags: redis
+
+  - name: set redis default configuration file
+    copy:
+     src="redis-default.conf"
+     dest="/etc/default/redis-server"
+    notify:
+      - restart redis-sentinel
+    when: aptredis.changed
+    tags: redis
+
+  - name: set redis-sentinel initial configuration file
+    template:
+      src="redis-sentinel.conf.j2"
+      dest="/etc/redis/redis-sentinel.conf"
+    notify:
+      - restart redis-sentinel
+    when: aptredis.changed
+    tags: redis
+
+  - name: set redis pid directory
+    file:
+     path={{ item }}
+     state=directory
+     owner=redis
+     group=redis
+    with_items:
+      - "/var/run/redis/"
+      - "/var/lib/redis/redis-sentinel"
+    when: aptredis.changed
+    tags: redis
+
+#  - name: set redis-sentinel init.d service script
+#    copy:
+#     src="redis-sentinel-initd"
+#     dest="/etc/init.d/redis-sentinel"
+#     mode=0755
+#    notify:
+#      - restart redis-sentinel
+#    when: aptredis.changed
+#    tags: redis
+
+  - name: enable redis-sentinel service on boot
+    service:
+      name="redis-sentinel"
+      enabled=yes
+    when: aptredis.changed
+    tags: redis
+
+  - name: disable redis-server service
+    service:
+      name="redis-server"
+      state=stopped
+      enabled=no
+    when: aptredis.changed
+    tags: redis

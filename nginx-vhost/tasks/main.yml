@@ -1,0 +1,36 @@
+---
+
+- name: create docroot
+  file:
+    path={{ item.value.docroot }}
+    state=directory
+    owner={{ item.value.webuser }}
+    group={{ item.value.webuser }}
+  with_dict: '{{ nginx_vhost }}'
+  when: nginx_vhost is defined and item.value.configfile is not defined
+  tags: nginx-vhost
+
+- name: create vhost in nginx with custom config
+  copy:
+    src={{ item.value.configfile }}
+    dest=/etc/nginx/sites-available/{{ item.value.prio }}-{{ item.value.name }}.conf
+  with_dict: '{{ nginx_vhost }}'
+  when: item.value.configfile is defined
+  notify: reload nginx
+  tags: nginx-vhost
+
+- name: create vhost in nginx site enabled
+  template:
+    src=vhost-conf.j2
+    dest=/etc/nginx/sites-available/{{ item.value.prio }}-{{ item.value.name }}.conf
+  with_dict: '{{ nginx_vhost }}'
+  when: item.value.configfile is not defined
+  notify: reload nginx
+  tags: nginx-vhost
+
+- name: enable vhost for nginx
+  command: ln -s /etc/nginx/sites-available/{{ item.value.prio }}-{{ item.value.name }}.conf /etc/nginx/sites-enabled/
+    creates=/etc/nginx/sites-enabled/{{ item.value.prio }}-{{ item.value.name }}.conf
+  with_dict: '{{ nginx_vhost }}'
+  notify: reload nginx
+  tags: nginx-vhost

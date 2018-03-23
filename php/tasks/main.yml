@@ -1,0 +1,94 @@
+---
+
+- name: install php
+  apt:
+    pkg={{ item }}
+    state=installed
+    install_recommends=no
+    update_cache=yes
+  with_items:
+    - php{{ php_version }}
+    - php{{ php_version }}-common
+    - php{{ php_version }}-cli
+  tags:
+    - php
+
+- name: check if apache is installed
+  shell: "/usr/bin/dpkg-query -W -f='${Status}' apache2"
+  register: apache_status
+  changed_when: False
+  when: apache_mod_php is defined
+  tags:
+    - php
+
+- name: install php apache2 module
+  apt:
+    pkg=libapache2-mod-php{{ php_version }}
+    state=installed
+    update_cache=yes
+  when: apache_status.stdout == 'install ok installed' and apache_mod_php is defined
+  notify:
+   - restart apache
+  tags:
+    - php
+
+- name: push external php5 ini configuration template
+  template:
+    src={{ php_ini_external_template }}
+    dest=/etc/php{{ php_version }}/{{ item }}/php.ini
+    mode=0644
+    owner=root
+    group=root
+    backup=yes
+  with_items:
+    - cli
+    - apache2
+  notify: reload apache2
+  when: php_ini_external_template is defined and apache_mod_php is defined and php_version | version_compare('5','<=')
+  tags: php
+
+- name: push external php ini configuration template
+  template:
+    src={{ php_ini_external_template }}
+    dest=/etc/php/{{ php_version }}/{{ item }}/php.ini
+    mode=0644
+    owner=root
+    group=root
+    backup=yes
+  with_items:
+    - cli
+    - apache2
+  notify: reload apache2
+  when: php_ini_external_template is defined and apache_mod_php is defined and php_version | version_compare('7','>=')
+  tags: php
+
+
+- name: push custom php5 ini file
+  copy:
+    src={{ custom_php_ini_file }}
+    dest=/etc/php{{ php_version }}/{{ item }}/conf.d/30-custom-php.ini
+    mode=0644
+    owner=root
+    group=root
+    backup=yes
+  with_items:
+    - cli
+    - apache2
+  notify: reload apache
+  when: custom_php_ini_file is defined and apache_mod_php is defined | version_compare('5','<=')
+  tags: php
+
+- name: push custom php ini file
+  copy:
+    src={{ custom_php_ini_file }}
+    dest=/etc/php/{{ php_version }}/{{ item }}/conf.d/30-custom-php.ini
+    mode=0644
+    owner=root
+    group=root
+    backup=yes
+  with_items:
+    - cli
+    - apache2
+  notify: reload apache
+  when: custom_php_ini_file is defined and apache_mod_php is defined | version_compare('7','>=')
+  tags: php

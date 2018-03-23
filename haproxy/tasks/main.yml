@@ -1,0 +1,105 @@
+---
+
+- name: install HAproxy OS packages
+  apt:
+    pkg=haproxy
+    state=installed
+    update_cache=yes
+  when: haproxy_version is not defined
+  tags:
+    - haproxy
+
+- include: haproxy-1.5.yml
+  when: haproxy_version == 1.5 and haproxy_version is defined
+  tags:
+    - haproxy
+
+- name: install HAproxy management packages
+  apt:
+    pkg=hatop
+    state=installed
+    update_cache=yes
+  tags:
+    - haproxy
+
+- name: push configuration
+  template:
+    src=haproxy.cfg.j2
+    dest=/etc/haproxy/haproxy.cfg
+    mode=0640
+    owner=root
+    group=root
+    backup=yes
+    validate='haproxy -c -f %s'
+  notify:
+    - reload haproxy
+  when: haproxy_external_template is not defined and haproxy_external_file is not defined
+  tags:
+    - haproxy
+
+- name: push external haproxy configuration template
+  template:
+    src={{ haproxy_external_template }}
+    dest=/etc/haproxy/haproxy.cfg
+    mode=0640
+    owner=root
+    group=root
+    backup=yes
+    validate='haproxy -c -f %s'
+  notify:
+    - reload haproxy
+  when: haproxy_external_template is defined
+  tags:
+    - haproxy
+
+- name: push external haproxy configuration file
+  copy:
+    src={{ haproxy_external_file }}
+    dest=/etc/haproxy/haproxy.cfg
+    mode=0640
+    owner=root
+    group=root
+    backup=yes
+    validate='haproxy -c -f %s'
+  notify:
+    - reload haproxy
+  when: haproxy_external_file is defined
+  tags:
+    - haproxy
+    
+- name: push custom haproxy error files
+  copy:
+    src={{ haproxy_error_folder }}
+    dest=/etc/haproxy/errors/
+    mode=0644
+    owner=root
+    group=root
+    backup=yes
+  when: haproxy_error_folder is defined
+  tags:
+    - haproxy
+
+- name: push external ssl pem
+  copy:
+    src={{ haproxy_external_pem }}
+    dest=/etc/ssl/private/ssl.pem
+    mode=0640
+    owner=root
+    group=root
+    backup=yes
+  notify:
+    - reload haproxy
+  when: haproxy_external_pem is defined
+  tags:
+    - haproxy
+
+- name: sets default starting flag to 1
+  lineinfile:
+    dest=/etc/default/haproxy
+    regexp="^ENABLED"
+    line="ENABLED=1"
+  notify:
+    - restart haproxy
+  tags:
+    - haproxy
+

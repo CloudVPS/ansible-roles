@@ -1,0 +1,23 @@
+---
+
+- name: install apt support packages
+  apt:
+    pkg=python-software-properties
+    state=installed
+  tags:
+    - haproxy
+
+- name: install ppa for haproxy
+  apt_repository:
+    repo='ppa:vbernat/haproxy-1.5'
+    state=present
+  tags:
+    - haproxy
+
+- name: install HAproxy OS packages
+  apt:
+    pkg=haproxy
+    state=installed
+  tags:
+    - haproxy
+

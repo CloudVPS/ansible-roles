@@ -1,0 +1,95 @@
+---
+
+- name: add repos
+  apt_repository:
+    repo="{{ item }}"
+    update_cache=yes
+  with_items:
+    - 'ppa:webupd8team/java' 
+    - 'deb http://packages.elastic.co/elasticsearch/2.x/debian stable main'
+    - 'deb http://packages.elastic.co/kibana/4.5/debian stable main'
+    - 'deb http://packages.elastic.co/logstash/2.3/debian stable main'
+
+- name: apt keys id
+  apt_key:
+    id=D27D666CD88E42B4
+    keyserver=keyserver.ubuntu.com
+    state=present
+
+- name: apt keys url
+  apt_key:
+    url="https://packages.elastic.co/GPG-KEY-elasticsearch"
+    state=present
+
+- name: Accept Java 8 License
+  debconf: 
+    name='oracle-java8-installer' 
+    question='shared/accepted-oracle-license-v1-1' 
+    value='true' 
+    vtype='select'
+
+
+- name: install packages
+  apt:
+    name="{{ item }}"
+    update_cache=yes
+  with_items:
+    - 'nginx'
+    - 'oracle-java8-installer'
+    - 'elasticsearch'
+    - 'kibana'
+    - 'logstash'
+
+- name: enable services
+  service:
+    enabled=yes
+    state=started
+    name="{{ item }}"
+  with_items:
+    - 'kibana'
+    - 'nginx'
+    - 'logstash'
+    - 'elasticsearch'
+
+- name: nginx vhost 
+  template:
+    src=nginx.host.j2
+    dest=/etc/nginx/sites-available/default
+  notify:
+    - restart nginx
+
+
+- name: rsyslog accept tcp and udp
+  template:
+    src=rsyslog.conf.j2
+    dest=/etc/rsyslog.conf
+  notify:
+    - restart rsyslog
+
+- name: rsyslog json template
+  template:
+    src=01-json-template.conf
+    dest=/etc/rsyslog.d/01-json-template.conf
+  notify:
+    - restart rsyslog
+
+- name: rsyslog json send
+  template:
+    src=98-output.conf
+    dest=/etc/rsyslog.d/98-output.conf
+  notify:
+    - restart rsyslog
+
+- name: logstash conf
+  template:
+    src=logstash.conf
+    dest=/etc/logstash/conf.d/logstash.conf
+  notify:
+    - restart logstash
+
+- name: logstash apache
+  template:
+    src=02-apache.conf
+    dest=/etc/logstash/conf.d/02-apache.conf
+  notify:
+    - restart logstash

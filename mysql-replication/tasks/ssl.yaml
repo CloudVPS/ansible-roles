@@ -1,0 +1,139 @@
+---
+
+- name: copy certificates files
+  copy:
+    src={{ inventory_dir }}/{{ item }}
+    dest=/etc/mysql/{{ item }}
+  with_items:
+    - ca-cert.pem
+    - ca-key.pem
+    - client-cert.pem
+    - client-key.pem
+    - client-req.pem
+    - server-cert.pem
+    - server-key.pem
+    - server-req.pem
+  when: mysqlreplication is defined and mysqlreplication.ssl is defined
+
+- name: set correcet certificates permission
+  file: 
+    path=/etc/mysql/ca-key.pem
+    mode=0600
+  
+- name: set correcet certificates permission
+  file: 
+    path=/etc/mysql/ca-cert.pem
+    mode=0644
+
+- name: set correcet certificates permission 
+  file:
+    path=/etc/mysql/{{ item }}
+    mode=0640
+    group=mysql
+  with_items:
+    - server-cert.pem
+    - server-key.pem
+    - server-req.pem
+
+- name: set correcet certificates permission
+  file:
+    path=/etc/mysql/{{ item }}
+    mode=0644
+    group=mysql
+  with_items:
+    - client-cert.pem
+    - client-key.pem
+    - client-req.pem
+
+- name: check for ca certificate file
+  stat: 
+    path=/etc/mysql/ca-cert.pem
+  register: cacert
+  tags:
+    - mysql-replication
+    - mysql-ssl
+
+- name: check for ca key file
+  stat:
+    path=/etc/mysql/ca-key.pem
+  register: cakey
+  tags:
+    - mysql-replication
+    - mysql-ssl
+
+- name: check for server certificate file
+  stat:
+    path=/etc/mysql/server-cert.pem
+  register: servercert
+  tags:
+    - mysql-replication
+    - mysql-ssl
+
+- name: check for server key file
+  stat:
+    path=/etc/mysql/server-key.pem
+  register: serverkey
+  tags:
+    - mysql-replication
+    - mysql-ssl
+
+- name: check for client certificate file
+  stat:
+    path=/etc/mysql/client-cert.pem
+  register: clientcert
+  tags:
+    - mysql-replication
+    - mysql-ssl
+
+- name: check for client key file
+  stat:
+    path=/etc/mysql/client-key.pem
+  register: clientkey
+  tags:
+    - mysql-replication
+    - mysql-ssl
+
+- name: Update the replication user to require SSL
+  mysql_user:
+    name=replication
+    host={{ mysqlreplication.network }}
+    append_privs=true
+    priv=*.*:'REQUIRESSL'
+    state=present
+    login_user=root
+    login_password={{ mysql.rootpassword }}
+  when: mysqlreplication is defined and mysqlreplication.ssl is defined and cacert.stat.exists == True and cakey.stat.exists == True and servercert.stat.exists == True and serverkey.stat.exists == True and clientcert.stat.exists == True and clientkey.stat.exists == True
+  notify: restart mysql
+  tags:
+    - mysql-replication
+    - mysql-ssl
+
+- name: Stop slave
+  mysql_replication:
+    mode=stopslave
+  when: mysqlreplication is defined and mysqlreplication.ssl is defined and cacert.stat.exists == True and cakey.stat.exists == True and servercert.stat.exists == True and serverkey.stat.exists == True and clientcert.stat.exists == True and clientkey.stat.exists == True
+  tags:
+    - mysql-replication
+    - mysql-ssl
+
+# /usr/bin/mysql -e "CHANGE MASTER TO MASTER_HOST='master_hostname', MASTER_USER='replicate', MASTER_PASSWORD='password', 
+# MASTER_SSL=1, MASTER_SSL_CA = 'ca_file_name', MASTER_SSL_CAPATH = 'ca_directory_name', MASTER_SSL_CERT = 'cert_file_name', MASTER_SSL_KEY = 'key_file_name';"
+# Setup replication
+- name: Update master host to require SSL
+  mysql_replication:
+    mode=changemaster
+    master_host={{ mysqlreplication.master_host|default('False') }}
+    master_user=replication
+    master_password={{ mysqlreplication.replicationpassword }}
+    master_ssl=1
+    master_ssl_ca=/etc/mysql/ca-cert.pem
+    master_ssl_capath=/etc/mysql/
+    master_ssl_cert=/etc/mysql/client-cert.pem
+    master_ssl_key=/etc/mysql/client-key.pem
+    master_ssl_cipher=DHE-RSA-AES256-SHA
+  when: mysqlreplication is defined and mysqlreplication.ssl is defined and cacert.stat.exists == True and cakey.stat.exists == True and servercert.stat.exists == True and serverkey.stat.exists == True and clientcert.stat.exists == True and clientkey.stat.exists == True
+  register: master_info
+  tags:
+    - mysql-replication
+    - mysql-ssl
+

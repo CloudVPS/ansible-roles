@@ -1,0 +1,96 @@
+---
+
+- name: check if varnish-agent is already present
+  stat:
+    path=/usr/local/bin/varnish-agent
+  register: vagent
+  tags:
+    - varnish-agent
+
+- name: ensure varnish-agent packages are ready
+  apt:
+    pkg={{ item }}
+    state=present
+  with_items:
+    - git-core
+    - libvarnishapi-dev
+    - libmicrohttpd-dev
+    - build-essential
+    - automake
+    - pkg-config
+    - curl
+    - libcurl4-gnutls-dev
+    - python-docutils
+  tags:
+    - varnish-agent
+
+- name: create install directory vagent2
+  file:
+    path=/tmp/vagent2
+    state=directory
+  tags:
+    - varnish-agent
+  when: vagent.stat.exists == False
+
+- name: get git repository
+  git:
+    repo=https://github.com/varnish/vagent2.git
+    dest=/tmp/vagent2
+  tags:
+    - varnish-agent
+  when: vagent.stat.exists == False
+
+- name: run autogen.sh varnish-agent
+  shell: "cd /tmp/vagent2/ && ./autogen.sh"
+  tags:
+    - varnish-agent
+  when: vagent.stat.exists == False
+
+- name: configure build for varnish-agent
+  shell: "cd /tmp/vagent2/ && ./configure"
+  tags:
+    - varnish-agent
+  when: vagent.stat.exists == False
+
+- name: make varnish-agent
+  shell: "cd /tmp/vagent2/ && make"
+  tags:
+    - varnish-agent
+  when: vagent.stat.exists == False
+
+- name: install varnish-agent
+  shell: "cd /tmp/vagent2/ && make install"
+  tags:
+    - varnish-agent
+  when: vagent.stat.exists == False
+
+- name: cleanup /tmp/vagent
+  file:
+    path=/tmp/vagent2
+    state=absent
+  tags:
+    - varnish-agent
+  when: vagent.stat.exists == False
+
+- name: create vagent file
+  template:
+    src=agent_secret.j2
+    dest=/etc/varnish/agent_secret
+    backup=yes
+  tags:
+    - varnish-agent
+  when: varnishagent.password is defined
+
+- name: check varnish agent run status
+  shell: pidof varnish-agent
+  register: agentrun
+  changed_when: False
+  ignore_errors: True
+  tags:
+    - varnish-agent
+
+- name: ensure varnish agent is running
+  shell: /usr/local/bin/varnish-agent
+  when: agentrun|failed
+  tags:
+    - varnish-agent

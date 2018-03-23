@@ -1,0 +1,10 @@
+{% set snmp     = snmp|default(false) %}
+
+rocommunity  {{ snmp.community|default("rocommunity") }} {{ snmp.monitor|default("127.0.0.1") }}
+syslocation  "{{ snmp.systemlocation|default("Earth") }}"
+syscontact    {{ snmp.systemcontact|default("root@localhost") }}
+
+# disk PATH [MIN=DEFDISKMINIMUMSPACE]
+# Check the / partition
+
+disk / 500000

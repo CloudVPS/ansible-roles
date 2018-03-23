@@ -1,0 +1,9 @@
+{% set syncjob = unison.syncjob|default(false) %}
+# Ansible managed, please don't edit.
+
+{% for host in syncjob %}
+Host {{ host.slave_ip }}
+    User root
+    StrictHostKeyChecking no
+    IdentityFile ~/.ssh/unison_rsa
+{% endfor %}

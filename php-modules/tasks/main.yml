@@ -1,0 +1,10 @@
+---
+
+- name: install php-modules
+  apt:
+    pkg={{ item }}
+    state=installed
+  with_items: '{{ php_modules }}'
+  when: php_modules is defined
+  tags:
+    - php-modules

@@ -1,0 +1,81 @@
+---
+
+- name: install mysql-server
+  apt:
+    pkg={{ item }}
+    state=installed
+  with_items:
+    - mysql-server
+    - python-mysqldb
+    - mytop
+  tags:
+    - mysql
+
+- name: test if /root/.my.cnf exists
+  shell: "[ -f /root/.my.cnf ] && echo 'Found' || echo 'Not found'"
+  changed_when: False
+  register: mysql_user_file
+  tags:
+    - mysql
+
+- name: set root password for mysql
+  shell: mysqladmin -u root password {{ mysql.rootpassword }}
+  when: mysql_user_file.stdout == "Not found"
+  tags:
+    - mysql
+
+- name: create root user password file
+  template:
+    src=user_my.cnf.j2
+    dest=/root/.my.cnf
+    owner=root 
+    mode=0600
+  when: mysql_user_file.stdout == "Not found"
+  tags:
+    - mysql
+
+- name: copy custom mysql cnf template
+  copy:
+    src={{ custom_mysql_cnf_file }}
+    dest=/etc/mysql/conf.d/{{ custom_mysql_cnf_file | basename }}
+    backup=yes
+    owner=root 
+    mode=0644
+  when: custom_mysql_cnf_file is defined
+  notify:
+    - restart mysql
+  tags:
+    - mysql
+
+- name: listen on all ip addresses
+  lineinfile:
+    dest={{ item }}
+    regexp='bind-address\s*=\s*127\.0\.0\.1\s*'
+    line='bind-address   = 0.0.0.0'
+    state=present
+    backrefs=yes
+  with_items:
+    - '/etc/mysql/mysql.conf.d/mysqld.cnf'
+    - '/etc/mysql/my.cnf'
+  notify: 
+    - restart mysql
+  tags:
+    - mysql
+
+- name: Set mysql nagios user
+  mysql_user:
+    name={{ mysql.nagios_user|default('nagios') }}
+    host={{ mysql.nagios_network|default('10.0.%') }}
+    password={{ mysql.nagios_password }}
+    priv="*.*:SELECT,REPLICATION CLIENT,SUPER,GRANT"
+    state=present
+  when: mysql is defined and mysql.nagios_password is defined
+  tags:
+    - mysql
+
+- name: ensure mysql is running
+  service:
+    name=mysql
+    state=started
+  tags:
+    - mysql

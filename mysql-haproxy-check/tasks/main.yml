@@ -1,0 +1,56 @@
+---
+
+- name: install xinetd
+  apt:
+    pkg="{{ item }}"
+    state=present
+  with_items:
+    - python-mysqldb
+    - xinetd
+  tags:
+    - mysql-haproxy-check
+
+- name: create /usr/local/bin/scripts/ directory
+  file:
+    dest=/usr/local/bin/scripts/
+    state=directory
+  tags:
+    - mysql-haproxy-check
+
+- name: Set mysqlcheck user
+  mysql_user:
+    name=mysqlcheck
+    host=localhost
+    password={{ mysql_haproxy_check.password }}
+    priv=mysql.*:SELECT
+    state=present
+  when: mysql_haproxy_check is defined
+  tags:
+    - mysql-haproxy-check
+
+- name: create mysqlchk script
+  template:
+    src=mysqlchk.j2
+    dest=/usr/local/bin/scripts/mysqlchk
+    backup=yes
+    owner=nobody
+    group=root
+    mode=0744
+  notify:
+    - restart xinetd
+  tags:
+    - mysql-haproxy-check
+
+- name: set xinetd listen script 
+  template:
+    src=mysqlcheck-xinetd.j2
+    dest=/etc/xinetd.d/mysqlchk
+    backup=yes
+    owner=root
+    group=root
+    mode=0644
+  notify:
+    - restart xinetd
+  tags:
+    - mysql-haproxy-check
+

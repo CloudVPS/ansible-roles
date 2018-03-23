@@ -1,0 +1,7 @@
+---
+
+- name: remote rsyslog conf
+  template: 
+    src=99-remote-rsyslog.conf
+    dest=/etc/rsyslog.d/99-remote-rsyslog.conf
+  notify: restart rsyslog

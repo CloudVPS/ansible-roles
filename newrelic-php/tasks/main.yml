@@ -1,0 +1,28 @@
+---
+
+- name: General | Check for newrelic.license
+  fail:
+    msg: "newrelic license has not been defined"
+  when: newrelic.license|default(False) == False
+  tags: newrelic-php
+
+- name: General | Check for newrelic.appname
+  fail:
+    msg: "newrelic appname has not been defined"
+  when: newrelic.appname|default(False) == False
+  tags: newrelic-php
+
+- name: General | loading Debian config
+  include: debian.yml
+  when: ansible_os_family == 'Debian'
+  tags: newrelic-php
+
+- name: General | Loading RedHat config
+  include: redhat.yml
+  when: ansible_os_family == 'RedHat'
+  tags: newrelic-php
+
+- name: General | Load the unsupported yaml
+  include: unsupported.yml
+  when: ansible_os_family != 'RedHat' and ansible_os_family != 'Debian'
+  tags: newrelic-php

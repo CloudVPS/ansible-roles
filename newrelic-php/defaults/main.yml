@@ -1,0 +1,5 @@
+---
+
+
+# Application name (required)
+newrelic.appname: "{{ ansible_hostname }} PHP"

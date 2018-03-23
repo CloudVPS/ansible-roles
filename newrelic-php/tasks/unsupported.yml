@@ -1,0 +1,6 @@
+---
+
+- name: General | OS not supported!
+  fail:
+    msg: "The operating system of the target machine ({{ inventory_hostname }}) is not currently supported"
+  tags: newrelic-php

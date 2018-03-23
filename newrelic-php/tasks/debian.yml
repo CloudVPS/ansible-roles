@@ -1,0 +1,72 @@
+---
+
+- name: Debian | Check if apache2 is installed
+  command: dpkg-query -l apache2
+  register: apache2_installed
+
+- name: Debian | Check if newrelic-php5 is installed
+  command: dpkg-query -l newrelic-php5
+  register: newrelic_php_installed
+  ignore_errors: yes
+
+- name: Debian | Configure the New Relic repository
+  apt_repository:
+    repo='deb http://apt.newrelic.com/debian/ newrelic non-free'
+    state=present
+  tags: newrelic-php
+  when: newrelic_php_installed|failed
+
+- name: Debian | Trust the New Relic GPG key
+  apt_key:
+    url=https://download.newrelic.com/548C16BF.gpg
+    state=present
+    validate_certs=no
+  when: newrelic_php_installed|failed
+  tags: newrelic-php
+
+- name: Debian | Install the New Relic PHP agent
+  apt:
+    pkg: newrelic-php5
+    state: present
+    update_cache: yes
+  when: newrelic_php_installed|failed
+  tags: newrelic-php
+
+- name: Debian | Run New Relic installer | php5
+  shell: NR_INSTALL_SILENT=true newrelic-install install
+  args:
+    creates: /etc/php5/apache2/conf.d/20-newrelic.ini
+  when: (newrelic_php_installed|failed) and (php_version is not defined or php_version | version_compare('5','<=') )
+  tags: newrelic-php
+
+- name: Debian | Run New Relic installer | php7.0
+  shell: NR_INSTALL_SILENT=true newrelic-install install
+  args:
+    creates: /etc/php/{{ php_version }}/apache2/conf.d/20-newrelic.ini
+  when: newrelic_php_installed|failed and php_version is defined and php_version | version_compare('7','>=')
+  tags: newrelic-php
+
+
+- name: Debian | Configure the New Relic PHP agent | php5
+  template:
+    src: newrelic.ini.j2
+    dest: /etc/php/{{ php_version }}/apache2/conf.d/20-newrelic.ini
+    group: root
+    owner: root
+    mode: 0640
+  notify:
+   - reload apache2
+  when: php_version is not defined or php_version | version_compare('5','<=')
+  tags: newrelic-php
+
+- name: Debian | Configure the New Relic PHP agent | php7.0
+  template:
+    src: newrelic.ini.j2
+    dest: /etc/php/{{ php_version }}/apache2/conf.d/20-newrelic.ini
+    group: root
+    owner: root
+    mode: 0640
+  notify:
+   - reload apache2
+  when: php_version is defined and php_version | version_compare('7','>=')
+  tags: newrelic-php

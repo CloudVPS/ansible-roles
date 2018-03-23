@@ -1,0 +1,126 @@
+---
+
+- name: install unison
+  apt:
+    pkg=unison
+    state=installed
+  tags:
+    - unison
+
+
+- name: configure unison user
+  file:
+    path=/root/.unison/
+    state=directory
+  tags:
+    - unison
+
+- name: check if key file already exists on unison master
+  shell: /usr/bin/test -f /root/.ssh/unison_rsa
+  register: key_exchange
+  changed_when: False
+  ignore_errors: True
+  when: unison is defined and unison.state == 'master'
+  tags:
+    - unison
+
+- name: check if key file already exists on unison master
+  shell: /usr/bin/test -f /root/.ssh/unison_rsa.pub
+  register: key_exchange_slave
+  changed_when: False
+  ignore_errors: True
+  when: unison is defined and unison.state == 'slave'
+  tags:
+    - unison
+
+- name: create ssh keypair for unison
+  local_action: shell ssh-keygen -q -t rsa -C "Created for unison" -N '' -f /tmp/ansible-tmp-key
+    creates=/tmp/ansible-tmp-key
+  when: unison is defined
+  when: unison.state == "master"
+  when: key_exchange|failed
+  tags:
+    - unison
+
+- name: copy private key for unison slave host to master host
+  copy:
+    src=/tmp/ansible-tmp-key
+    dest=/root/.ssh/unison_rsa
+    mode=0600
+  when: unison is defined and unison.state == 'master'
+  when: key_exchange|failed
+  tags:
+    - unison
+
+- name: Delete local ssh key for unison from /tmp/
+  local_action: shell rm /tmp/ansible-tmp-key
+    removes=/tmp/ansible-tmp-key
+  when: unison is defined and unison.state == 'master'
+  when: key_exchange|failed
+  tags:
+    - unison
+
+- name: copy private key for unison slave host
+  copy:
+    src=/tmp/ansible-tmp-key.pub
+    dest=/root/.ssh/unison_rsa.pub
+  when: unison is defined and unison.state == 'slave'
+  when: key_exchange_slave|failed
+  tags:
+    - unison
+
+- name: Delete local ssh public key for unison from /tmp/
+  local_action: shell rm /tmp/ansible-tmp-key.pub
+    removes=/tmp/ansible-tmp-key.pub
+  when: unison is defined and unison.state == 'slave'
+  when: key_exchange_slave|failed
+  tags:
+    - unison
+
+- name: Cat public key to ansible register variable
+  command: cat /root/.ssh/unison_rsa.pub
+  register: public_key
+  when: unison is defined and unison.state == 'slave'
+  when: key_exchange_slave|failed
+  tags:
+    - unison
+
+- name: Save unison public key to authorized_key file
+  authorized_key:
+    user=root
+    state=present
+    key="{{ public_key.stdout }}"
+  when: unison is defined and unison.state == 'slave'
+  when: key_exchange_slave|failed
+  tags:
+    - unison
+
+- name: configure unison ssh configuration
+  template:
+    src=config.j2
+    dest=/root/.ssh/config
+    backup=yes
+  when: unison is defined and unison.state == 'master'
+  tags:
+    - unison
+
+- name: configure unison configuration
+  template:
+    src=default.prf.j2
+    dest="/root/.unison/{{ item.name }}.prf"
+  with_items: unison.syncjob
+  when: unison is defined and unison.state == 'master'
+  tags:
+    - unison-conf
+    - unison
+
+- name: setup unison cronjobs
+  cron:
+    user=root
+    name="Unison syncjob for {{ item.name }}"
+    job="/usr/bin/flock -n /tmp/unison.{{ item.name }}.lockfile /usr/bin/unison {{ item.name }} > /dev/null 2>&1"
+    backup=yes
+  when: unison is defined and unison.state == 'master'
+  with_items: unison.syncjob
+  tags:
+    - unison

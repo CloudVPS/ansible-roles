@@ -8,7 +8,7 @@
   apt: 
     pkg=keepalived
     update_cache=yes
-    state=installed
+    state=present
   tags:
     - keepalived
   

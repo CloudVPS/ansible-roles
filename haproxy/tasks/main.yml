@@ -3,7 +3,7 @@
 - name: install HAproxy OS packages
   apt:
     pkg=haproxy
-    state=installed
+    state=present
     update_cache=yes
   when: haproxy_version is not defined
   tags:
@@ -17,7 +17,7 @@
 - name: install HAproxy management packages
   apt:
     pkg=hatop
-    state=installed
+    state=present
     update_cache=yes
   tags:
     - haproxy

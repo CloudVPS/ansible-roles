@@ -3,7 +3,7 @@
 - name: install unison
   apt:
     pkg=unison
-    state=installed
+    state=present
   tags:
     - unison
 

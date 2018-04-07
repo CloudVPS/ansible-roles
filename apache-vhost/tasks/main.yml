@@ -75,7 +75,7 @@
 - name: install mod-ruid2 packages
   apt:
     pkg=libapache2-mod-ruid2
-    state=installed
+    state=present
   with_dict: '{{ apache_vhost }}'
   when: item.value.modruid is defined and item.value.modruid == True
   notify: reload apache

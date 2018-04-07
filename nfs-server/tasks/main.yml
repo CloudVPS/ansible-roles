@@ -3,7 +3,7 @@
 - name: install nfs server
   apt:
     name="{{ item }}"
-    state=installed
+    state=present
   with_items:
     - nfs-common
     - nfs-kernel-server

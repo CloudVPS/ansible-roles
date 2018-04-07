@@ -3,7 +3,7 @@
 - name: install apache packages
   apt:
     pkg=apache2
-    state=installed
+    state=present
   tags:
     - apache
 

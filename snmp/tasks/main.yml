@@ -3,7 +3,7 @@
 - name: install snmpd package | Debian
   apt:
     pkg=snmpd
-    state=installed
+    state=present
   tags:
     - snmp
   when: ansible_os_family == 'Debian'
@@ -11,7 +11,7 @@
 - name: install snmpd package | RedHat
   yum:
     pkg=net-snmp
-    state=installed
+    state=present
   tags:
     - snmp
   when: ansible_os_family == 'RedHat'

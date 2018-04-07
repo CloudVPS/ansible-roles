@@ -3,7 +3,7 @@
 - name: install php
   apt:
     pkg={{ item }}
-    state=installed
+    state=present
     install_recommends=no
     update_cache=yes
   with_items:
@@ -24,7 +24,7 @@
 - name: install php apache2 module
   apt:
     pkg=libapache2-mod-php{{ php_version }}
-    state=installed
+    state=present
     update_cache=yes
   when: apache_status.stdout == 'install ok installed' and apache_mod_php is defined
   notify:

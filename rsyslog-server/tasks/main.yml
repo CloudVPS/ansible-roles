@@ -3,7 +3,7 @@
 - name: install rsyslog packages
   apt:
     pkg=rsyslog
-    state=installed
+    state=present
   tags:
     - rsyslog
 

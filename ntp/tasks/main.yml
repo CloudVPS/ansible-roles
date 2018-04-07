@@ -3,7 +3,7 @@
 - name: install ntp packages | Debian
   apt:
     pkg=ntp
-    state=installed
+    state=present
   register: ntp_install
   tags:
     - ntp
@@ -12,7 +12,7 @@
 - name: install ntp packages | RedHat
   yum:
     pkg=ntp
-    state=installed
+    state=present
   register: ntp_install
   tags:
     - ntp
@@ -20,7 +20,7 @@
 
 - name: Set ntp clock sync
   command: ntpd -gq
-  when: ntp_install|changed
+  when: ntp_install is changed
   ignore_errors: yes
   failed_when: False
   tags:

@@ -49,7 +49,7 @@
 - name: NRPE | Ubuntu 14.04 | install the xlis-nagios-sla-checks package
   apt:
     pkg={{ item }}
-    state=installed
+    state=present
   with_items:
     - xlis-nagios-sla-checks
     - nagios-nrpe-plugin
@@ -81,7 +81,7 @@
   apt: 
     pkg={{ item }}
     install_recommends=no
-    state=installed
+    state=present
   with_items:
     - monitoring-plugins-basic
     - nagios-nrpe-plugin
@@ -219,7 +219,7 @@
   notify:
     - restart nrpe debian
     - restart nrpe redhat
-  when: nrpe_debug is not defined or nrpe_debug is false
+  when: nrpe_debug is not defined or (nrpe_debug is defined and nrpe_debug == "false")
   tags:
     - nrpe
     - nrpe-config
@@ -235,7 +235,7 @@
   notify:
     - restart nrpe debian
     - restart nrpe redhat
-  when: nrpe_debug is defined and nrpe_debug is true
+  when: nrpe_debug is defined and nrpe_debug == "true"
   tags:
     - nrpe
     - nrpe-config

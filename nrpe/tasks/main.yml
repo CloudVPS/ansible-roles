@@ -1,9 +1,10 @@
 ---
 
 - name: NRPE | CentOS | ensure repostory packges are installed
-  package:
+  apt:
     pkg={{ item }}
     state=present
+    cache_valid_time=86400
   with_items:
     - bc
     - python-pycurl
@@ -13,9 +14,10 @@
     - nrpe
 
 - name: NRPE | Ubuntu | ensure repostory packges are installed
-  package:
+  apt:
     pkg={{ item }}
     state=present
+    cache_valid_time=86400
   with_items:
     - python-apt
     - libfile-readbackwards-perl
@@ -59,25 +61,26 @@
     - nrpe
 
 # Ubuntu 16.04
-- name: NRPE | Ubuntu 16.04 | copy deb file with enable-command-args
+- name: NRPE | Ubuntu >= 16.04 | copy deb file with enable-command-args
   copy:
     dest=/root/nagios-nrpe-server_2.15-1ubuntu1_amd64.deb
     src=nagios-nrpe-server_2.15-1ubuntu1_amd64.deb
     backup=yes
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_release == "xenial"  
+  when: ansible_distribution == "Ubuntu" and (ansible_distribution_release == "xenial" or ansible_distribution_release == "bionic")
   tags:
     - nrpe
     - nrpe-config
 
-- name: NRPE | Ubuntu 16.04 | install nrpe from .deb
+- name: NRPE | Ubuntu >= 16.04 | install nrpe from .deb
   apt:
-    deb=nagios-nrpe-server_2.15-1ubuntu1_amd64.deb
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_release == "xenial"
+    deb=/root/nagios-nrpe-server_2.15-1ubuntu1_amd64.deb
+    force=yes
+  when: ansible_distribution == "Ubuntu" and  (ansible_distribution_release == "xenial" or ansible_distribution_release == "bionic")
   tags:
     - repository
     - nrpe
 
-- name: NRPE | Ubuntu 16.04 | install the nagios-nrpe-plugin package xenial
+- name: NRPE | Ubuntu >= 16.04 | install the nagios-nrpe-plugin package xenial
   apt: 
     pkg={{ item }}
     install_recommends=no
@@ -86,7 +89,7 @@
     - monitoring-plugins-basic
     - nagios-nrpe-plugin
     - monitoring-plugins-common
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_release == "xenial"
+  when: ansible_distribution == "Ubuntu" and  (ansible_distribution_release == "xenial" or ansible_distribution_release == "bionic")
   tags:
     - nrpe
 
@@ -260,14 +263,14 @@
 
 
 ## Custom Checks
-- name: NRPE | copy sql check 16.04
+- name: NRPE | copy sql check ubuntu >= 16.04
   copy: 
     dest=/usr/lib/nagios/plugins/check_mysql
     src={{ item }}
     backup=yes
   with_fileglob:
     - check_mysql-16.04
-  when: ansible_distribution_release == "xenial"
+  when: ansible_distribution_release == "xenial" or ansible_distribution_release == "bionic"
   notify:
     - restart nrpe debian
   tags:

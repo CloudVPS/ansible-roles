@@ -1,8 +1,9 @@
 ---
 
-- name: 'add keepalived ppa'
+- name: 'add keepalived ppa ubuntu =< 16.04'
   apt_repository:
     repo: 'ppa:keepalived/stable'
+  when: ansible_distribution == "Debian" and ansible_distribution_major_version < "18"
 
 - name: install keepalived
   apt: 
@@ -23,25 +24,25 @@
     msg: "You are using keepalived version {{ keepalived_version.stdout }}"
   tags: keepalived
 
-- name: set keepalived template for 1.2.2
+- name: set keepalived template for 1.2.2 and older
   template:
     src=keepalived.conf.j2
     dest=/etc/keepalived/keepalived.conf
     backup=yes
   notify:
     - reload keepalived
-  when: keepalived_external_template is not defined and keepalived_version.stdout | version_compare('1.2.19','<')
+  when: keepalived_external_template is not defined and keepalived_version.stdout is version_compare('1.2.19','<')
   tags:
     - keepalived
 
-- name: set keepalived template for 1.2.19
+- name: set keepalived template for 1.2.19 and newer
   template:
     src=keepalived.conf.j2
     dest=/etc/keepalived/keepalived.conf
     backup=yes
   notify:
     - reload keepalived
-  when: keepalived_external_template is not defined and keepalived_version.stdout | version_compare('1.2.19','>=') 
+  when: keepalived_external_template is not defined and keepalived_version.stdout is version_compare('1.2.19','>=') 
   tags:
     - keepalived
 
@@ -78,7 +79,6 @@
     name=keepalived 
     state=started
     enabled=yes
-    pattern=/usr/sbin/keepalived    
   tags:
     - keepalived
   
@@ -89,7 +89,6 @@
    sysctl_set=yes 
    state=present 
    reload=yes
-   sysctl_file=/etc/sysctl.conf
   tags:
     - keepalived
   
@@ -100,7 +99,6 @@
    sysctl_set=yes 
    state=present 
    reload=yes
-   sysctl_file=/etc/sysctl.conf
   tags:
     - keepalived
   

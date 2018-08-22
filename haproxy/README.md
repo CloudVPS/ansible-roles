@@ -43,7 +43,7 @@ No extra steps needed.
 `haproxy_external_file`|string|`path to a custom config file (see example below)`|``
 `haproxy_error_folder`|string|`folder with haproxy error pages`|``
 `haproxy_external_pem`|string|`external pem file for haproxy ssl frontends`|``
-`haproxy.http_in|`|string|`http frontend ip`|`*`
+`haproxy.http_in`|string|`http frontend ip`|`*`
 `haproxy.mysql_vip`|string|`mysql frontend ip`|`*`
 `haproxy.mysql_backup_ip`|string|`mysql backend ip`|`127.0.1.100`
 `haproxy.mysql_master_ip`|string|`mysql backend ip`|`127.0.1.110`
@@ -59,7 +59,7 @@ No extra steps needed.
 
 
 
-```
+
 
 * Tested on Ubuntu 16.04
 

@@ -1,12 +1,12 @@
 {% set serveraliases 	= item.value.serveraliases|default(false) %}
-{% set php_version      = item.value.php_version|default(5) %}
+{% set php_version      = item.value.php_version|default(7.2) %}
 
 server {
         listen 80;
         server_name {{ item.value.name }} {% if serveraliases -%}alias{% for alias in serveraliases %} {{ alias }}{% endfor %}{% endif %};
         server_tokens off;
 
-        root {{ item.value.docroot }};
+        root {{ item.value.docroot|default('/var/www/html/') }};
         index index.html index.htm index.php;
 
         location / {
@@ -17,11 +17,7 @@ server {
         location ~ \.php$ {
                 try_files $uri =404;
                 fastcgi_split_path_info ^(.+\.php)(/.+)$;
-{% if php_version == 7 %}
-		fastcgi_pass unix:/run/php/php7.0-fpm.sock;
-{% else %}
-                fastcgi_pass unix:/var/run/php5-fpm.sock;
-{% endif %}
+		fastcgi_pass unix:/run/php/php{{ php_version }}-fpm.sock;
                 fastcgi_index index.php;
                 fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
                 include fastcgi_params;

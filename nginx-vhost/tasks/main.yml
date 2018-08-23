@@ -4,16 +4,16 @@
   file:
     path={{ item.value.docroot }}
     state=directory
-    owner={{ item.value.webuser }}
-    group={{ item.value.webuser }}
+    owner={{ item.value.webuser|default('www-data') }}
+    group={{ item.value.webuser|default('www-data') }}
   with_dict: '{{ nginx_vhost }}'
-  when: nginx_vhost is defined and item.value.configfile is not defined
+  when: nginx_vhost is defined and item.value.configfile is not defined and item.value.docroot is defined
   tags: nginx-vhost
 
 - name: create vhost in nginx with custom config
   copy:
     src={{ item.value.configfile }}
-    dest=/etc/nginx/sites-available/{{ item.value.prio }}-{{ item.value.name }}.conf
+    dest=/etc/nginx/sites-available/{{ item.value.prio|default('100')}}-{{ item.value.name }}.conf
   with_dict: '{{ nginx_vhost }}'
   when: item.value.configfile is defined
   notify: reload nginx
@@ -22,15 +22,17 @@
 - name: create vhost in nginx site enabled
   template:
     src=vhost-conf.j2
-    dest=/etc/nginx/sites-available/{{ item.value.prio }}-{{ item.value.name }}.conf
+    dest=/etc/nginx/sites-available/{{ item.value.prio|default('100') }}-{{ item.value.name }}.conf
   with_dict: '{{ nginx_vhost }}'
   when: item.value.configfile is not defined
   notify: reload nginx
   tags: nginx-vhost
 
 - name: enable vhost for nginx
-  command: ln -s /etc/nginx/sites-available/{{ item.value.prio }}-{{ item.value.name }}.conf /etc/nginx/sites-enabled/
-    creates=/etc/nginx/sites-enabled/{{ item.value.prio }}-{{ item.value.name }}.conf
+  file:
+    src: /etc/nginx/sites-available/{{ item.value.prio|default('100') }}-{{ item.value.name }}.conf 
+    dest: /etc/nginx/sites-enabled/{{ item.value.prio|default('100') }}-{{ item.value.name }}.conf 
+    state: link
   with_dict: '{{ nginx_vhost }}'
   notify: reload nginx
   tags: nginx-vhost

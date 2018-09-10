@@ -9,11 +9,14 @@
   tags: nfs
 
 - name: Install nfs client
-  apt:
-    pkg={{ item }}
+  package:
+    name={{ item }}
     state=present
   with_items:
     - nfs-common
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags:
     - nfs
 

@@ -27,12 +27,12 @@ Add the role like this:
 ```
 
 This role needs variables in group_vars/
-- for the inital redis master (redis01)
+- for the inital redis master (redis-master)
 - for the quorum needed
 
 ```yaml
 redis:
-  redis01: '10.0.0.130'
+  redis-master: '10.0.0.130'
   quorum: '1'
 ```
 
@@ -52,5 +52,5 @@ No extra steps needed.
 
 |Name|Type|Description|Default|Required|
 |----|----|-----------|-------|-------|
-`redis01`|string|`The first redis node/master`|``|`yes`|
+`redis-master`|string|`The first redis node/master`|``|`yes`|
 `quorum`|string|`The cluster Quorum`|``|`yes`|

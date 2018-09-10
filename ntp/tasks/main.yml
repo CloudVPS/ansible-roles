@@ -5,6 +5,8 @@
     name=ntp
     state=present
   register: ntp_install
+  retries: 5
+  until: ntp_install is success
   tags: ntp
 
 - name: Set ntp clock sync

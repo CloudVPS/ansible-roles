@@ -26,11 +26,11 @@ redis:
 ```
 
 Example for slave host:
-- for the inital slaves (slaveoff)
+- for the inital slaves (redis-master)
 
 ```yaml
 redis:
-  slaveoff: '10.0.0.130'
+  redis-master: '10.0.0.130'
 
 ```
 
@@ -51,5 +51,5 @@ No extra steps needed.
 |Name|Type|Description|Default|Required|
 |----|----|-----------|-------|-------|
 `redis`|empty|`always needed`|``|`yes`|
-`redis.slaveoff`|string|`master ip`|``|`yes`|
+`redis.redis-master`|string|`master ip`|``|`yes`|
 

@@ -1,26 +1,16 @@
 ---
 
 - name: debian | install necessary packages
-  apt:
+  package:
     name={{ item }}
     state=present
   with_items:
     - corosync
     - pacemaker
-  when: ansible_os_family == 'Debian'
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags: corosync
-
-
-- name: redhat | install necessary packages
-  yum:
-    name={{ item }}
-    state=present
-  with_items:
-    - corosync
-    - pacemaker
-  when: ansible_os_family == 'RedHat'
-  tags: corosync
-
 
 - debug: msg="run find / on the host to speed up the authkey generation"
 

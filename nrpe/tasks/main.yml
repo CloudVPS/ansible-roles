@@ -27,7 +27,9 @@
     name: nagios-nrpe-server
     selection: hold
   when: ansible_distribution == "Ubuntu"
-
+  register: apt_res
+  retries: 5
+  until: apt_res is success
 
 - name: NRPE | Ubuntu | ensure repostory packges are installed
   package:
@@ -39,6 +41,9 @@
     - bc
     - python-pycurl
   when: ansible_distribution == "Ubuntu"
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags:
     - repository
     - nrpe
@@ -79,6 +84,9 @@
     - nagios-plugins-swap
     - nagios-plugins-procs
   when: ansible_distribution == "CentOS"
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags:
     - repository
     - nrpe

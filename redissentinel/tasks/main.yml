@@ -43,7 +43,7 @@
   - name: set redis default configuration file
     copy:
      src="redis-default.conf"
-     dest="/etc/default/redis-server"
+     dest="/etc/default/redis-sentinel"
     notify:
       - restart redis-sentinel
     when: aptredis.changed

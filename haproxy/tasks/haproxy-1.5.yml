@@ -3,7 +3,7 @@
 - name: install apt support packages
   apt:
     pkg=python-software-properties
-    state=installed
+    state=present
   tags:
     - haproxy
 
@@ -17,7 +17,7 @@
 - name: install HAproxy OS packages
   apt:
     pkg=haproxy
-    state=installed
+    state=present
   tags:
     - haproxy
 

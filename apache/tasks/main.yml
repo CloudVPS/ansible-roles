@@ -1,9 +1,12 @@
 ---
 
 - name: install apache packages
-  apt:
-    pkg=apache2
-    state=installed
+  package:
+    name=apache2
+    state=present
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags:
     - apache
 

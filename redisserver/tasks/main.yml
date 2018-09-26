@@ -1,9 +1,54 @@
 ---
 
-- include: debian.yml
-  when: ansible_os_family == 'Debian'
+  - name: prep os for more open files
+    lineinfile:
+      line="{{ item }}"
+      dest=/etc/security/limits.conf
+    with_items:
+      - "ubuntu soft nofile 65535"
+      - "ubuntu hard nofile 65535"
+    tags:
+      - redis
 
-# TODO:
-#- include: redhat.yml
-#  when: ansible_os_family == 'RedHat'
+  - name: prep os for more tcp backlog
+    sysctl:
+      name=net.core.somaxconn
+      value=512
+      state=present
+    tags:
+      - redis
+
+  - name: install packages
+    package:
+      pkg="{{ item }}"
+      state=present
+    with_items:
+      - redis-server
+      - redis-tools
+    register: aptredis
+    register: apt_res
+    retries: 5
+    until: apt_res is success
+    tags:
+     - redis
+
+  - name: set redis default configuration file
+    copy:
+     src="redis-default.conf"
+     dest="/etc/default/redis-server"
+    notify:
+      - restart redis
+#    when: aptredis.changed
+    tags:
+      - redis
+
+  - name: set redis initial configuration file
+    template:
+      src="redis.conf.j2"
+      dest="/etc/redis/redis.conf"
+    when: ansible_distribution == 'Ubuntu'
+    notify:
+      - restart redis
+    tags:
+      - redis
 

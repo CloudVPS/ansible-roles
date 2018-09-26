@@ -1,37 +1,26 @@
 ---
 
-- name: install ntp packages | Debian
-  apt:
-    pkg=ntp
-    state=installed
+- name: install ntp packages
+  package:
+    name=ntp
+    state=present
   register: ntp_install
-  tags:
-    - ntp
-  when: ansible_os_family == 'Debian'
-
-- name: install ntp packages | RedHat
-  yum:
-    pkg=ntp
-    state=installed
-  register: ntp_install
-  tags:
-    - ntp
-  when: ansible_os_family == 'RedHat'
+  retries: 5
+  until: ntp_install is success
+  tags: ntp
 
 - name: Set ntp clock sync
   command: ntpd -gq
-  when: ntp_install|changed
+  when: ntp_install is changed
   ignore_errors: yes
   failed_when: False
-  tags:
-    - ntp
+  tags: ntp
 
 - name: ensure ntp is running | Debian
   service:
     name=ntp
     state=started
-  tags:
-    - ntp
+  tags: ntp
   when: ansible_os_family == 'Debian'
 
 - name: ensure ntpd is running | RedHat

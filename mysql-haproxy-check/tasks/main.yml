@@ -1,12 +1,15 @@
 ---
 
 - name: install xinetd
-  apt:
-    pkg="{{ item }}"
+  package:
+    name="{{ item }}"
     state=present
   with_items:
     - python-mysqldb
     - xinetd
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags:
     - mysql-haproxy-check
 

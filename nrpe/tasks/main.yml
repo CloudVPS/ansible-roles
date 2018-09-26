@@ -1,20 +1,39 @@
 ---
 
-- name: NRPE | CentOS | ensure repostory packges are installed
-  package:
-    pkg={{ item }}
-    state=present
-  with_items:
-    - bc
-    - python-pycurl
-  when: ansible_distribution == "CentOS"
+- name: NRPE | Ubuntu | copy deb file with enable-command-args
+  copy:
+    dest=/root/nagios-nrpe-server_2.15-1ubuntu1_amd64.deb
+    src=nagios-nrpe-server_2.15-1ubuntu1_amd64.deb
+  when: ansible_distribution == "Ubuntu"
+  tags:
+    - nrpe
+    - nrpe-config
+
+- name: NRPE | Ubuntu | install nrpe from .deb
+  apt:
+    deb=/root/nagios-nrpe-server_2.15-1ubuntu1_amd64.deb
+    force=yes
+  when: ansible_distribution == "Ubuntu"
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags:
     - repository
     - nrpe
 
+## Put nagios Package on hold
+- name: hold nagios-nrpe-server package
+  dpkg_selections:
+    name: nagios-nrpe-server
+    selection: hold
+  when: ansible_distribution == "Ubuntu"
+  register: apt_res
+  retries: 5
+  until: apt_res is success
+
 - name: NRPE | Ubuntu | ensure repostory packges are installed
   package:
-    pkg={{ item }}
+    name={{ item }}
     state=present
   with_items:
     - python-apt
@@ -22,72 +41,54 @@
     - bc
     - python-pycurl
   when: ansible_distribution == "Ubuntu"
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags:
     - repository
     - nrpe
 
-# Ubuntu 14.04
-- name: NRPE | Ubuntu 14.04 | prepare keys for cloudvps repository
-  apt_key:
-    url=http://keyserver.ubuntu.com/pks/lookup?op=get&search=0xBCF6D4908106D28F
-    state=present
-    id=8106D28F
-  when: (ansible_distribution == "Ubuntu" and ansible_distribution_release == "trusty") or (ansible_distribution == "Ubuntu" and ansible_distribution_release == "precise")
-  tags:
-    - repository
-    - nrpe
-
-- name: NRPE | Ubuntu 14.04 | prepare the cloudvps repository
-  apt_repository: 
-    repo='deb [arch=amd64] http://packages.cloudvps.com/ precise main'
-    state=present
-  when: (ansible_distribution == "Ubuntu" and ansible_distribution_release == "trusty") or (ansible_distribution == "Ubuntu" and ansible_distribution_release == "precise")
-  tags:
-    - repository
-    - nrpe
-
-- name: NRPE | Ubuntu 14.04 | install the xlis-nagios-sla-checks package
-  apt:
-    pkg={{ item }}
-    state=installed
-  with_items:
-    - xlis-nagios-sla-checks
-    - nagios-nrpe-plugin
-  when: (ansible_distribution == "Ubuntu" and ansible_distribution_release == "trusty") or (ansible_distribution == "Ubuntu" and ansible_distribution_release == "precise")
-  tags:
-    - repository
-    - nrpe
-
-# Ubuntu 16.04
-- name: NRPE | Ubuntu 16.04 | copy deb file with enable-command-args
-  copy:
-    dest=/root/nagios-nrpe-server_2.15-1ubuntu1_amd64.deb
-    src=nagios-nrpe-server_2.15-1ubuntu1_amd64.deb
-    backup=yes
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_release == "xenial"  
-  tags:
-    - nrpe
-    - nrpe-config
-
-- name: NRPE | Ubuntu 16.04 | install nrpe from .deb
-  apt:
-    deb=nagios-nrpe-server_2.15-1ubuntu1_amd64.deb
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_release == "xenial"
-  tags:
-    - repository
-    - nrpe
-
-- name: NRPE | Ubuntu 16.04 | install the nagios-nrpe-plugin package xenial
+- name: NRPE | Ubuntu | install the nagios-nrpe-plugin package without recommends
   apt: 
-    pkg={{ item }}
+    name={{ item }}
     install_recommends=no
-    state=installed
+    state=present
   with_items:
     - monitoring-plugins-basic
     - nagios-nrpe-plugin
     - monitoring-plugins-common
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_release == "xenial"
+  when: ansible_distribution == "Ubuntu"
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags:
+    - nrpe
+
+- name: NRPE | CentOS | ensure repostory packges are installed
+  package:
+    name={{ item }}
+    state=present
+  with_items:
+    - bc
+    - python-pycurl
+    - nagios-plugins-nrpe
+    - nrpe
+    - nagios-plugins-disk
+    - nagios-plugins-check-updates
+    - nagios-plugins-fping
+    - nagios-plugins-http
+    - nagios-plugins-load
+    - nagios-plugins-mailq
+    - nagios-plugins-pgsql
+    - nagios-plugins-smtp
+    - nagios-plugins-swap
+    - nagios-plugins-procs
+  when: ansible_distribution == "CentOS"
+  register: apt_res
+  retries: 5
+  until: apt_res is success
+  tags:
+    - repository
     - nrpe
 
 - name: NRPE | create symlink on CentOS to usr/lib/nagios
@@ -116,26 +117,6 @@
     - nrpe
     - nrpe-config
 
-- name: NRPE | RedHat | install necessary nagios packages
-  package:
-    pkg={{ item }}
-    state=present
-  with_items:
-    - nagios-plugins-nrpe
-    - nrpe
-    - nagios-plugins-disk
-    - nagios-plugins-check-updates
-    - nagios-plugins-fping
-    - nagios-plugins-http
-    - nagios-plugins-load
-    - nagios-plugins-mailq
-    - nagios-plugins-pgsql
-    - nagios-plugins-smtp
-    - nagios-plugins-swap
-    - nagios-plugins-procs
-  when: ansible_distribution == "CentOS"
-  tags:
-    - nrpe
 
 - name: NRPE | create symlink on CentOS to nrpe.d
   file:
@@ -210,37 +191,6 @@
     - nrpe-config
     - nrpe-debug
 
-## Disable debug
-- name: NRPE | remove all occurences of debug=1
-  lineinfile:
-    dest: /etc/nagios/nrpe.cfg
-    state: absent
-    regexp: "^debug=1"
-  notify:
-    - restart nrpe debian
-    - restart nrpe redhat
-  when: nrpe_debug is not defined or nrpe_debug is false
-  tags:
-    - nrpe
-    - nrpe-config
-    - nrpe-debug
-
-- name: NRPE | set debug
-  lineinfile: 
-    dest: /etc/nagios/nrpe.cfg 
-    state: present
-    line: "{{ item }}"
-  with_items:
-    - "debug=1"
-  notify:
-    - restart nrpe debian
-    - restart nrpe redhat
-  when: nrpe_debug is defined and nrpe_debug is true
-  tags:
-    - nrpe
-    - nrpe-config
-    - nrpe-debug
-
 ## Make sure NRPE is running
 - name: NRPE | Debian | make sure nagios-nrpe-server is running
   service:
@@ -260,42 +210,13 @@
 
 
 ## Custom Checks
-- name: NRPE | copy sql check 16.04
+- name: NRPE | Ubuntu | copy sql check
   copy: 
     dest=/usr/lib/nagios/plugins/check_mysql
     src={{ item }}
-    backup=yes
   with_fileglob:
-    - check_mysql-16.04
-  when: ansible_distribution_release == "xenial"
-  notify:
-    - restart nrpe debian
-  tags:
-    - nrpe
-    - nrpe-config
-
-- name: NRPE | copy sql check 14.04
-  copy: 
-    dest=/usr/lib/nagios/plugins/check_mysql
-    src={{ item }}
-    backup=yes
-  with_fileglob:
-    - check_mysql-14.04
-  when: ansible_distribution_release == "trusty"
-  notify:
-    - restart nrpe debian
-  tags:
-    - nrpe
-    - nrpe-config
-
-- name: NRPE | copy sql check 12.04
-  copy: 
-    dest=/usr/lib/nagios/plugins/check_mysql
-    src={{ item }}
-    backup=yes
-  with_fileglob:
-    - check_mysql-12.04
-  when: ansible_distribution_release == "precise"
+    - check_mysql
+  when: ansible_distribution == "Ubuntu"
   notify:
     - restart nrpe debian
   tags:
@@ -333,53 +254,15 @@
   lineinfile: 
     dest: /etc/sudoers.tmp 
     state: present 
-    regexp: "^nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_mysql$" 
-    line: "nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_mysql"
+    regexp: "{{ item.regexp}}"
+    line: "{{ item.line }}"
   when: ansible_distribution == "Ubuntu" 
-  tags:
-    - nrpe
-    - sudo
-
-- name: Add nagios to sudoers
-  lineinfile: 
-    dest: /etc/sudoers.tmp 
-    state: present 
-    regexp: "^nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/haproxy.pl$" 
-    line: "nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/haproxy.pl"
-  when: ansible_distribution == "Ubuntu" 
-  tags:
-    - nrpe
-    - sudo
-
-- name: Add nagios to sudoers
-  lineinfile:
-    dest: /etc/sudoers.tmp
-    state: present
-    regexp: "^nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_disk$"
-    line: "nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_disk"
-  when: ansible_distribution == "Ubuntu" 
-  tags:
-    - nrpe
-    - sudo
-
-- name: Add nagios to sudoers
-  lineinfile:
-    dest: /etc/sudoers.tmp
-    state: present
-    regexp: "^nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_pacemaker.sh$"
-    line: "nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_pacemaker.sh"
-  when: ansible_distribution == "Ubuntu" 
-  tags:
-    - nrpe
-    - sudo
-
-- name: Add nagios to sudoers
-  lineinfile:
-    dest: /etc/sudoers.tmp
-    state: present
-    regexp: "^nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_time_log.pl$"
-    line: "nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_time_log.pl"
-  when: ansible_distribution == "Ubuntu" 
+  with_items:
+    - { regexp: "^nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_mysql$", line: "nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_mysql" }
+    - { regexp: "^nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/haproxy.pl$", line: "nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/haproxy.pl" }
+    - { regexp: "^nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_disk$", line: "nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_disk" }
+    - { regexp: "^nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_pacemaker.sh$", line: "nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_pacemaker.sh" }
+    - { regexp: "^nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_time_log.pl$", line: "nagios ALL = NOPASSWD: /usr/lib/nagios/plugins/check_time_log.pl" }
   tags:
     - nrpe
     - sudo
@@ -389,11 +272,4 @@
   tags:
     - nrpe
     - sudo
-
-## Put nagios Package on hold
-- name: hold nagios-nrpe-server package
-  dpkg_selections:
-    name: nagios-nrpe-server
-    selection: hold
-  when: ansible_distribution == "Ubuntu"
 

@@ -1,24 +1,22 @@
 ---
 
 - name: install HAproxy OS packages
-  apt:
-    pkg=haproxy
-    state=installed
+  package:
+    name="{{ item }}"
+    state=present
     update_cache=yes
   when: haproxy_version is not defined
+  with_items:
+    - haproxy
+    - hatop
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags:
     - haproxy
 
 - include: haproxy-1.5.yml
   when: haproxy_version == 1.5 and haproxy_version is defined
-  tags:
-    - haproxy
-
-- name: install HAproxy management packages
-  apt:
-    pkg=hatop
-    state=installed
-    update_cache=yes
   tags:
     - haproxy
 

@@ -1,0 +1,256 @@
+#ansible-playbook -i inventory mysql-rebuild-slave.yml --extra-vars "slave=sql2.* master=sql1.* rootpassword=ieYdfi781214aeH7z"
+#
+---
+# Author: Rosco Nap <rosco@cloudvps.nl>
+# Created on: 18-09-2015
+#
+# Restore mysql slave with percona tools en xtrabackup.
+#
+# First this script will check if you have enough free diskspace to create a SQL dump when finished, it will
+# then copy the /var/lib/mysql direcory to /var/lib/mysql.<timestamp>.bak.
+#
+# Then this script will make an copy of the master mysql server SQL data with xtrabackup and dumps this
+# on a temporary SSHFS mount to the target host where it applies the xtrabackup log.
+#
+# In order to do this /root/backup must be empty on the master
+#
+# When done, it will copy this to a newly created mysql directory and then attempt to start the mysqlserver.
+#
+# Usage: ansible-playbook -i production/inventory mysql-rebuild-slave.yml --extra-vars "slave=sql2.<customer> master=sql1.<customer> rootpassword=<password>"
+#
+# This script will not change anything on the master server except a /root/backup directory and some
+# support packages.
+#
+# However, this will replace the /var/lib/mysql directory on the target, so please make sure this server
+# is not used, and backup the /var/lib/mysql files. It will copy this to an backup directory, so data 
+# should not be lost, but this is not a guarantee.
+
+# -- Preprereqisites
+
+- name: check prereqisites
+  #hosts: "{{master}}:{{slave}}"
+  hosts: "{{slave}}"
+  vars_prompt:
+    - name: "not_used"
+      prompt: "Are you sure the target(slave) server is not used as an active mysql server [no/yes]?"
+      private: no
+      default: "no"
+  tasks:
+
+  - fail:
+      msg="check user input"
+    when: not_used != "yes"
+
+  - name: get disk where /var/lib/mysql is resided
+    shell: df -P /var/lib/mysql/ | tail -1 | cut -d' ' -f 1
+    register: mysql_partition
+
+  - name: get used diskspace kbytes for mysql_partition
+    shell: df |grep "{{ mysql_partition.stdout }}" |awk '{print $4}'
+    register: free_diskspace_kb
+
+  - debug: var=free_diskspace_kb.stdout
+
+  - name: get used diskspace for /var/lib/mysql/
+    shell: du /var/lib/mysql/ -s | awk '{print $1}'
+    register: used_diskspace_kb
+
+  - debug: var=used_diskspace_kb.stdout
+
+  - name: set needed disksapce (used + 1GB)
+    set_fact:
+      needed_diskspace_kb: "{{ used_diskspace_kb.stdout|int + 1048576|int }}"
+
+  - debug: var=needed_diskspace_kb
+
+  - name: compare used_diskspace with free diskspace
+    assert:
+      that:
+        - "{{ needed_diskspace_kb }} < {{ free_diskspace_kb.stdout }}"
+
+# -- Preinstall
+
+- name: preinstall
+  hosts: "{{master}}:{{slave}}"
+  roles:
+    - percona-tools
+
+  tasks:
+
+  - name: install sshfs
+    apt:
+      pkg: sshfs
+      state: installed
+
+# -- Preactions
+
+- name: preinstall master
+  hosts: "{{master}}"
+  force_handlers: True
+  tasks:
+
+  - name: generate ssh keypair
+    local_action: shell echo -e  'y\n'|ssh-keygen -q -t rsa -C "Created for master-slave-restore" -N '' -f /tmp/ansible-tmp-key
+      creates=/tmp/ansible-tmp-key
+    notify:
+      - remove-private-key
+
+  - name: ensure ssh directory exists
+    file:
+      path: /root/.ssh/
+      state: directory
+
+  - name: copy private restore_sql key to master host
+    copy:
+      src=/tmp/ansible-tmp-key
+      dest=/root/.ssh/restore_sql_rsa
+      mode=0600
+
+  handlers:
+  - name: remove-private-key
+    local_action: shell rm /tmp/ansible-tmp-key
+      removes=/tmp/ansible-tmp-key
+
+- name: preinstall slave
+  hosts: "{{slave}}"
+  force_handlers: True
+  tasks:
+
+  - name: ensure ssh directory exists
+    file:
+      path: /root/.ssh/
+      state: directory
+
+  - authorized_key: user=root key="{{ lookup('file', '/tmp/ansible-tmp-key.pub') }}"
+
+- name: disable and backup mysql on slave
+  hosts: "{{slave}}"
+  gather_facts: no
+  force_handlers: True
+  tasks:
+
+  - name: stop mysql on slave
+    service:
+      name: mysql
+      state: stopped
+
+  - name: setup restore folder on slave
+    file:
+      path: /var/lib/mysql-restore
+      state: directory
+
+  - name: backup mysql directory on slave.
+    shell: "mv /var/lib/mysql /var/lib/mysql.bak-$(date +%Y%m%d-%H-%M-%S)"
+    tags:
+      - always
+
+  - name: recreate /var/lib/mysql on slave
+    file:
+      path: /var/lib/mysql
+      state: directory
+      owner: mysql
+      group: mysql
+
+- name: prepare master server
+  hosts: "{{master}}"
+  force_handlers: True
+  tasks:
+
+  - name: create backup directory on master server
+    file:
+      path: /root/backup
+      state: directory
+    ignore_errors: yes
+
+  - name: mount /root/backup on slave /var/lib/mysql-restore
+    shell: "sshfs root@{{ hostvars[slave]['ansible_default_ipv4']['address'] }}:/var/lib/mysql-restore/ /root/backup/ -o reconnect -o IdentityFile=/root/.ssh/restore_sql_rsa"
+
+- name: start the backup
+  hosts: "{{master}}"
+  tasks:
+
+  - name: start xtrabackup with password
+    shell: "xtrabackup --backup --user=root --password={{ rootpassword }} --target-dir=/root/backup/"
+    async: 14400
+    poll: 20
+    register: xtrabackup
+
+  - name: get backup directory name
+    shell: ls /root/backup/|head -n 1
+    register: backupdirmount
+
+  - name: apply log on xtrabackup
+    shell: "xtrabackup --prepare --user=root --password={{ rootpassword }} --target-dir=/root/backup/"
+    async: 14400
+    poll: 5
+    register: apply
+
+  - name: umount backup directory
+    shell: umount -l /root/backup
+    tags:
+      - always
+
+  - name: remove private key file from master
+    file:
+      path: /root/.ssh/restore_sql_rsa
+      state: absent
+    tags:
+      - always
+
+- name: prepare the backup on the slave
+  hosts: "{{slave}}"
+  gather_facts: no
+  tasks:
+
+  - name: remove auth_key
+    authorized_key:
+      user=root
+      key="{{ lookup('file', '/tmp/ansible-tmp-key.pub') }}"
+      state=absent
+
+  - name: delete-public-key
+    local_action: shell rm /tmp/ansible-tmp-key.pub
+      removes=/tmp/ansible-tmp-key.pub
+    tags:
+      - always
+
+  - name: get backup directory name
+    shell: ls /var/lib/mysql-restore/|head -n 1
+    register: backupdir
+
+  - debug: var=backupdir
+
+  - name: move backupdirectory to /var/lib/mysql/
+    shell: "xtrabackup --move-back --target-dir=/var/lib/mysql-restore/"
+
+  - name: chown mysql directory
+    shell: chown -R mysql:mysql /var/lib/mysql/
+
+  - name: remove backup directory
+    file:
+      path: "/var/lib/mysql-restore/{{backupdir.stdout}}"
+      state: absent
+
+  - name: start mysql on slave
+    service:
+      name: mysql
+      state: started
+
+- name: display needed info
+  hosts: "{{master}}"
+  tasks:
+  - name: get master_info
+    shell: cat /var/lib/mysql/master.info | tail -18 | head -3
+    register: master_info
+
+  - debug: var=master_info.stdout_lines
+
+- name: display needed slave info
+  hosts: "{{slave}}"
+  tasks:
+  - name: get slave_info
+    shell: cat /var/lib/mysql-restore/xtrabackup_binlog_info
+    register: slave_info
+
+  - debug: var=slave_info.stdout_lines
+

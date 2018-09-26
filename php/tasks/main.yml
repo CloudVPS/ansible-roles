@@ -3,13 +3,16 @@
 - name: install php
   apt:
     pkg={{ item }}
-    state=installed
+    state=present
     install_recommends=no
     update_cache=yes
   with_items:
     - php{{ php_version }}
     - php{{ php_version }}-common
     - php{{ php_version }}-cli
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags:
     - php
 
@@ -24,11 +27,14 @@
 - name: install php apache2 module
   apt:
     pkg=libapache2-mod-php{{ php_version }}
-    state=installed
+    state=present
     update_cache=yes
   when: apache_status.stdout == 'install ok installed' and apache_mod_php is defined
   notify:
    - restart apache
+  register: apt_res
+  retries: 5
+  until: apt_res is success
   tags:
     - php
 

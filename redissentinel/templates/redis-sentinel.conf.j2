@@ -1,12 +1,12 @@
-{% set redis01	= redis.redis01 %}
+{% set redismaster	= redis.redismaster %}
 {% set quorum	= redis.quorum %}
 port 26379
 daemonize yes
-pidfile "/var/run/redis/redis-sentinel.pid"
+pidfile "/var/run/sentinel/redis-sentinel.pid"
 logfile "/var/log/redis/redis-sentinel.log"
-dir "/var/lib/redis/redis-sentinel"
-sentinel monitor redis01 {{ redis01 }} 6379 {{ quorum }}
+dir "/var/lib/redis"
+sentinel monitor redis01 {{ redismaster }} 6379 {{ quorum }}
 sentinel down-after-milliseconds redis01 3000
 sentinel failover-timeout redis01 6000
-sentinel notification-script redis01 /var/lib/redis/notification.sh
+# sentinel notification-script redis01 /var/lib/redis/notification.sh
 
